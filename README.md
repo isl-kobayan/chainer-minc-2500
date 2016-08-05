@@ -1,5 +1,5 @@
 # chainer-minc-2500
-train/validate minc-2500 dataset with chainer
+train/validate minc-2500 dataset with [chainer](https://github.com/pfnet/chainer)
 
 MINC-2500 dataset: [download](http://opensurfaces.cs.cornell.edu/static/minc/minc-2500.tar.gz) 
 
