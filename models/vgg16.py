@@ -3,7 +3,6 @@ import chainer.functions as F
 import chainer.links as L
 import config
 #import transferlearn
-#import numpy as np
 
 class VGG16(chainer.Chain):
 
@@ -60,5 +59,5 @@ class VGG16(chainer.Chain):
         #self.accuracy = F.accuracy(h, t)
         #return self.loss
         loss = F.softmax_cross_entropy(h, t)
-        chainer.report({'loss': loss, 'acuracy': F.accuracy(h, t)}, self)
+        chainer.report({'loss': loss, 'accuracy': F.accuracy(h, t)}, self)
         return loss

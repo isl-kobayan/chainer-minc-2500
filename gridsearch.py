@@ -35,14 +35,14 @@ parser.add_argument('--out', '-o', default='result',
                     help='Output directory')
 parser.add_argument('--root', '-R', default='.',
                     help='Root directory path of image files')
-parser.add_argument('--val_batchsize', '-b', type=int, default=250,
+parser.add_argument('--val_batchsize', '-b', type=int, default=50,
                     help='Validation minibatch size')
 parser.add_argument('--test', action='store_true')
 parser.set_defaults(test=False)
 args = parser.parse_args()
 
-archs = ['googlenet', 'vgg16', 'vgg19']
-batchsizes = [23, 32, 50]
+archs = ['vgg16', 'vgg19']
+batchsizes = [23, 32]
 baselrs = [0.0005, 0.001, 0.005]
 gammas = [0.9, 0.5]
 

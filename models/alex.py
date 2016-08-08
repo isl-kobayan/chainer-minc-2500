@@ -46,7 +46,7 @@ class Alex(chainer.Chain):
         #self.accuracy = F.accuracy(h, t)
         #return self.loss
         loss = F.softmax_cross_entropy(h, t)
-        chainer.report({'loss': loss, 'acuracy': F.accuracy(h, t)}, self)
+        chainer.report({'loss': loss, 'accuracy': F.accuracy(h, t)}, self)
         return loss
 
     def layer2rank(self, layer):

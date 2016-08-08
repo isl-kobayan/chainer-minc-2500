@@ -135,7 +135,7 @@ if __name__ == '__main__':
                         help='Output directory')
     parser.add_argument('--root', '-R', default='.',
                         help='Root directory path of image files')
-    parser.add_argument('--val_batchsize', '-b', type=int, default=250,
+    parser.add_argument('--val_batchsize', '-b', type=int, default=20,
                         help='Validation minibatch size')
     parser.add_argument('--test', action='store_true')
     parser.set_defaults(test=False)
