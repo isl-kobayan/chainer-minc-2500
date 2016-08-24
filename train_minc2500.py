@@ -71,6 +71,7 @@ def main(args):
 
     #val_interval = (10 if args.test else int(len(train) / args.batchsize)), 'iteration'
     val_interval = (10, 'iteration') if args.test else (1, 'epoch')
+    snapshot_interval = (10, 'iteration') if args.test else (2, 'epoch')
     log_interval = (10 if args.test else 200), 'iteration'
 
     # Copy the chain with shared parameters to flip 'train' flag only in test
@@ -80,9 +81,9 @@ def main(args):
     val_evaluator = extensions.Evaluator(val_iter, eval_model, device=args.gpu)
     trainer.extend(val_evaluator, trigger=val_interval)
     trainer.extend(extensions.dump_graph('main/loss'))
-    trainer.extend(extensions.snapshot(), trigger=val_interval)
+    trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
     trainer.extend(extensions.snapshot_object(
-        model, 'model_iter_{.updater.iteration}'), trigger=val_interval)
+        model, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
     trainer.extend(extensions.LogReport(trigger=log_interval))

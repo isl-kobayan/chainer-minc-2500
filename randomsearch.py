@@ -4,6 +4,7 @@ import argparse
 import itertools
 import models
 import train_minc2500
+import random
 
 parser = argparse.ArgumentParser(
     description='Learning convnet from MINC-2500 dataset')
@@ -41,11 +42,12 @@ parser.add_argument('--test', action='store_true')
 parser.set_defaults(test=False)
 args = parser.parse_args()
 
-archs = ['vgg16', 'vgg19']
-batchsizes = [23, 32]
-baselrs = [0.0005, 0.001, 0.005]
-gammas = [0.9, 0.5]
+archs = ['vgg16']
+batchsize_range = 20, 32
+baselr_range = 0.0001, 0.005
+gamma_range = 0.3, 0.9
 
+trial = 30
 #archs = ['googlenet']
 #batchsizes = [32]
 #baselrs = [0.001]
@@ -56,11 +58,11 @@ results="dir\tarch\tbatchsize\tbaselr\tgamma\tloss\taccuracy\n"
 with open(path_gridsearchlog, 'a') as f:
     f.write(results)
 
-for arch, bs, baselr, gamma in itertools.product(archs, batchsizes, baselrs, gammas):
-    args.arch = arch
-    args.batchsize = bs
-    args.baselr = baselr
-    args.gamma = gamma
+for i in range(trial):
+    args.arch = random.choice(archs)
+    args.batchsize = random.randint(batchsize_range)
+    args.baselr = random.uniform(baselr_range)
+    args.gamma = random.uniform(gamma_range)
     val_result = train_minc2500.main(args)
 
     result = val_result['outputdir'] + '\t' \
