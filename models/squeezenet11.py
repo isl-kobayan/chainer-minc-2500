@@ -19,14 +19,14 @@ class SqueezeNet11(chainer.Chain):
         return y
 
     def add_fire(self, name, in_channels, s1, e1, e3):
-        super(SqueezeNet11, self).add_link(name + '/squeeze1x1', F.Convolution2D(in_channels, s1, 1))
-        super(SqueezeNet11, self).add_link(name + '/expand1x1', F.Convolution2D(s1, e1, 1))
-        super(SqueezeNet11, self).add_link(name + '/expand3x3', F.Convolution2D(s1, e3, 3, pad=1))
+        super(SqueezeNet11, self).add_link(name + '/squeeze1x1', L.Convolution2D(in_channels, s1, 1))
+        super(SqueezeNet11, self).add_link(name + '/expand1x1', L.Convolution2D(s1, e1, 1))
+        super(SqueezeNet11, self).add_link(name + '/expand3x3', L.Convolution2D(s1, e3, 3, pad=1))
 
     def __init__(self, labelsize=config.labelsize):
         self.labelsize = labelsize
         super(SqueezeNet11, self).__init__()
-        super(SqueezeNet11, self).add_link('conv1', F.Convolution2D(3,  64, 3, stride=2))
+        super(SqueezeNet11, self).add_link('conv1', L.Convolution2D(3,  64, 3, stride=2))
         self.add_fire('fire2', 64, 16, 64, 64)
         self.add_fire('fire3', 128, 16, 64, 64)
         self.add_fire('fire4', 128, 32, 128, 128)
@@ -35,7 +35,7 @@ class SqueezeNet11(chainer.Chain):
         self.add_fire('fire7', 384, 48, 192, 192)
         self.add_fire('fire8', 384, 64, 256, 256)
         self.add_fire('fire9', 512, 64, 256, 256)
-        super(SqueezeNet11, self).add_link('conv10', F.Convolution2D(
+        super(SqueezeNet11, self).add_link('conv10', L.Convolution2D(
             512, self.labelsize, 1, pad=1,
             initialW=np.random.normal(0, 0.01, (self.labelsize, 512, 1, 1))))
         self.train = True

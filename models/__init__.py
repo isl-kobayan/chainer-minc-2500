@@ -7,6 +7,8 @@ import vgg16
 import vgg19
 import squeezenet10
 import squeezenet11
+import minc_googlenet
+import minc_vgg16
 import numpy as np
 
 archs = {
@@ -18,7 +20,9 @@ archs = {
     'vgg19': vgg19.VGG19,
     'nin': nin.NIN,
     'SqueezeNet10': squeezenet10.SqueezeNet10,
-    'SqueezeNet11': squeezenet11.SqueezeNet11
+    'SqueezeNet11': squeezenet11.SqueezeNet11,
+    'minc-googlenet': minc_googlenet.MINC_GoogLeNet,
+    'minc-vgg16': minc_vgg16.MINC_VGG16
 }
 
 NIN = nin.NIN
@@ -30,6 +34,8 @@ VGG16 = vgg16.VGG16
 VGG19 = vgg19.VGG19
 SqueezeNet10 = squeezenet10.SqueezeNet10
 SqueezeNet11 = squeezenet11.SqueezeNet11
+MINC_GoogLeNet = minc_googlenet.MINC_GoogLeNet,
+MINC_VGG16 = minc_vgg16.MINC_VGG16
 
 def getModel(arch):
     if arch == 'nin':
@@ -50,6 +56,10 @@ def getModel(arch):
         return SqueezeNet10()
     elif arch == 'squeezenet11':
         return SqueezeNet11()
+    elif arch == 'minc-googlenet':
+        return MINC_GoogLeNet()
+    elif arch == 'minc-vgg16':
+        return MINC_VGG16()
     else:
         raise ValueError('Invalid architecture name')
         return None

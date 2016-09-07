@@ -3,17 +3,17 @@ import chainer.functions as F
 import chainer.links as L
 import config
 
-class VGG16(chainer.Chain):
+class MINC_VGG16(chainer.Chain):
 
     """VGG 16 layer model."""
 
     insize = 224
-    finetuned_model_path = './models/VGG_ILSVRC_16_layers.caffemodel'
-    mean_value = (103.939, 116.779, 123.68)
+    finetuned_model_path = './models/minc-vgg16.caffemodel'
+    mean_value = (104, 117, 124)
 
     def __init__(self, labelsize=config.labelsize):
         self.labelsize = labelsize
-        super(VGG16, self).__init__(
+        super(MINC_VGG16, self).__init__(
             conv1_1=L.Convolution2D(3, 64, 3, stride=1, pad=1),
             conv1_2=L.Convolution2D(64, 64, 3, stride=1, pad=1),
             conv2_1=L.Convolution2D(64, 128, 3, stride=1, pad=1),
@@ -29,8 +29,8 @@ class VGG16(chainer.Chain):
             conv5_3=L.Convolution2D(512, 512, 3, stride=1, pad=1),
             fc6=L.Linear(25088, 4096),
             fc7=L.Linear(4096, 4096),
-            fc8=L.Linear(4096, self.labelsize)
         )
+        super(MINC_VGG16, self).add_link('fc8-20', L.Linear(4096, self.labelsize))
         self.train = True
 
     def __call__(self, x, t):
@@ -47,7 +47,7 @@ class VGG16(chainer.Chain):
 
         h = F.dropout(F.relu(self.fc6(h)), train=self.train, ratio=0.5)
         h = F.dropout(F.relu(self.fc7(h)), train=self.train, ratio=0.5)
-        h = self.fc8(h)
+        h = self['fc8-20'](h)
 
         loss = F.softmax_cross_entropy(h, t)
         chainer.report({'loss': loss, 'accuracy': F.accuracy(h, t)}, self)

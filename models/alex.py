@@ -2,7 +2,6 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 import config
-#import transferlearn
 
 class Alex(chainer.Chain):
 
@@ -25,12 +24,7 @@ class Alex(chainer.Chain):
         )
         self.train = True
 
-    '''def clear(self):
-        self.loss = None
-        self.accuracy = None'''
-
     def __call__(self, x, t):
-        #self.clear()
         h = F.max_pooling_2d(F.local_response_normalization(
             F.relu(self.conv1(x)), alpha=(1e-4)/5, k=1), 3, stride=2)
         h = F.max_pooling_2d(F.local_response_normalization(
@@ -42,9 +36,6 @@ class Alex(chainer.Chain):
         h = F.dropout(F.relu(self.fc7(h)), train=self.train)
         h = self.fc8(h)
 
-        #self.loss = F.softmax_cross_entropy(h, t)
-        #self.accuracy = F.accuracy(h, t)
-        #return self.loss
         loss = F.softmax_cross_entropy(h, t)
         chainer.report({'loss': loss, 'accuracy': F.accuracy(h, t)}, self)
         return loss

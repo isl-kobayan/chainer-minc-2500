@@ -34,7 +34,7 @@ def main(args):
     # Initialize the model to train
     model = models.archs[args.arch]()
     if args.finetune and hasattr(model, 'finetuned_model_path'):
-        finetuning.load_param(model.finetuned_model_path, model)
+        finetuning.load_param(model.finetuned_model_path, model, args.ignore)
     if args.initmodel:
         print('Load model from', args.initmodel)
         chainer.serializers.load_npz(args.initmodel, model)
@@ -98,48 +98,54 @@ def main(args):
     if args.resume:
         chainer.serializers.load_npz(args.resume, trainer)
 
-    trainer.run()
+    if not args.test:
+        trainer.run()
+        chainer.serializers.save_npz(outputdir + '/model', model)
 
-    chainer.serializers.save_npz(outputdir + '/model', model)
     results = val_evaluator()
     results['outputdir'] = outputdir
     return results
 
+parser = argparse.ArgumentParser(
+    description='Learning convnet from MINC-2500 dataset')
+parser.add_argument('train', help='Path to training image-label list file')
+parser.add_argument('val', help='Path to validation image-label list file')
+parser.add_argument('--arch', '-a', choices=models.archs.keys(), default='nin',
+                    help='Convnet architecture')
+parser.add_argument('--batchsize', '-B', type=int, default=32,
+                    help='Learning minibatch size')
+parser.add_argument('--baselr', default=0.001, type=float,
+                    help='Base learning rate')
+parser.add_argument('--gamma', default=0.7, type=float,
+                    help='Base learning rate')
+parser.add_argument('--epoch', '-E', type=int, default=10,
+                    help='Number of epochs to train')
+parser.add_argument('--gpu', '-g', type=int, default=-1,
+                    help='GPU ID (negative value indicates CPU')
+parser.add_argument('--finetune', '-f', default=False, action='store_true',
+                    help='do fine-tuning if this flag is set (default: False)')
+parser.add_argument('--initmodel',
+                    help='Initialize the model from given file')
+parser.add_argument('--ignore', nargs='+', default=[],
+                    help='Ignored layers in parameter copy')
+parser.add_argument('--loaderjob', '-j', type=int,
+                    help='Number of parallel data loading processes')
+parser.add_argument('--mean', '-m', default='mean.npy',
+                    help='Mean file (computed by compute_mean.py)')
+parser.add_argument('--resume', '-r', default='',
+                    help='Initialize the trainer from given file')
+parser.add_argument('--out', '-o', default='result',
+                    help='Output directory')
+parser.add_argument('--root', '-R', default='.',
+                    help='Root directory path of image files')
+parser.add_argument('--val_batchsize', '-b', type=int, default=20,
+                    help='Validation minibatch size')
+parser.add_argument('--test', action='store_true')
+parser.set_defaults(test=False)
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Learning convnet from MINC-2500 dataset')
-    parser.add_argument('train', help='Path to training image-label list file')
-    parser.add_argument('val', help='Path to validation image-label list file')
-    parser.add_argument('--arch', '-a', choices=models.archs.keys(), default='nin',
-                        help='Convnet architecture')
-    parser.add_argument('--batchsize', '-B', type=int, default=32,
-                        help='Learning minibatch size')
-    parser.add_argument('--baselr', default=0.001, type=float,
-                        help='Base learning rate')
-    parser.add_argument('--gamma', default=0.7, type=float,
-                        help='Base learning rate')
-    parser.add_argument('--epoch', '-E', type=int, default=10,
-                        help='Number of epochs to train')
-    parser.add_argument('--gpu', '-g', type=int, default=-1,
-                        help='GPU ID (negative value indicates CPU')
-    parser.add_argument('--finetune', '-f', default=False, action='store_true',
-                        help='do fine-tuning if this flag is set (default: False)')
-    parser.add_argument('--initmodel',
-                        help='Initialize the model from given file')
-    parser.add_argument('--loaderjob', '-j', type=int,
-                        help='Number of parallel data loading processes')
-    parser.add_argument('--mean', '-m', default='mean.npy',
-                        help='Mean file (computed by compute_mean.py)')
-    parser.add_argument('--resume', '-r', default='',
-                        help='Initialize the trainer from given file')
-    parser.add_argument('--out', '-o', default='result',
-                        help='Output directory')
-    parser.add_argument('--root', '-R', default='.',
-                        help='Root directory path of image files')
-    parser.add_argument('--val_batchsize', '-b', type=int, default=20,
-                        help='Validation minibatch size')
-    parser.add_argument('--test', action='store_true')
-    parser.set_defaults(test=False)
     args = parser.parse_args()
 
-    main(args)
+    val_result = main(args)
+    print('loss\taccuracy')
+    print(str(val_result['validation/main/loss']) + '\t' + str(val_result['validation/main/accuracy']))

@@ -14,7 +14,7 @@ class LabeledBGRImageDataset(chainer.datasets.LabeledImageDataset):
         with Image.open(full_path).convert('RGB') as f:
             image = numpy.asarray(f, dtype=self._dtype)
         label = numpy.array(int_label, dtype=self._label_dtype)
-        return image.transpose(2, 0, 1), label
+        return image.transpose(2, 0, 1)[::-1], label
 
 class PreprocessedDataset(chainer.dataset.DatasetMixin):
 

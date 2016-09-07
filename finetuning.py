@@ -4,11 +4,12 @@ from chainer.functions import caffe
 import cPickle as pickle
 import os.path
 
-def copy_model(src, dst):
+def copy_model(src, dst, ignore_layers=None):
     assert isinstance(src, link.Chain)
     assert isinstance(dst, link.Chain)
     for child in src.children():
         if child.name not in dst.__dict__: continue
+        if child.name in ignore_layers: continue
         dst_child = dst[child.name]
         if type(child) != type(dst_child): continue
         if isinstance(child, link.Chain):
@@ -39,7 +40,7 @@ def makepkl(path, model):
     pklfilepath = change_ext(path, '.pkl')
     pickle.dump(model, open(pklfilepath, 'wb'))
 
-def load_param(path, obj):
+def load_param(path, obj, ignore_layers=None):
     src = None
 
     # load .pkl if exists
@@ -51,4 +52,4 @@ def load_param(path, obj):
         src = caffe.CaffeFunction(change_ext(path, '.caffemodel'))
         pickle.dump(src, open(change_ext(path, '.pkl'), 'wb'))
 
-    copy_model(src, obj)
+    copy_model(src, obj, ignore_layers)

@@ -2,8 +2,6 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 import config
-#import transferlearn
-#import numpy as np
 
 class VGG19(chainer.Chain):
 
@@ -38,12 +36,7 @@ class VGG19(chainer.Chain):
         )
         self.train = True
 
-    '''def clear(self):
-        self.loss = None
-        self.accuracy = None'''
-
     def __call__(self, x, t):
-        #self.clear()
         h = self.conv1_2(F.relu(self.conv1_1(x)))
         h = F.max_pooling_2d(F.relu(h), 2, stride=2)
         h = self.conv2_2(F.relu(self.conv2_1(h)))
@@ -59,9 +52,6 @@ class VGG19(chainer.Chain):
         h = F.dropout(F.relu(self.fc7(h)), train=self.train, ratio=0.5)
         h = self.fc8(h)
 
-        #self.loss = F.softmax_cross_entropy(h, t)
-        #self.accuracy = F.accuracy(h, t)
-        #return self.loss
         loss = F.softmax_cross_entropy(h, t)
         chainer.report({'loss': loss, 'accuracy': F.accuracy(h, t)}, self)
         return loss
