@@ -25,7 +25,7 @@ archs = {
     'minc-vgg16': minc_vgg16.MINC_VGG16
 }
 
-NIN = nin.NIN
+'''NIN = nin.NIN
 Alex = alex.Alex
 AlexBN = alexbn.AlexBN
 GoogLeNet = googlenet.GoogLeNet
@@ -63,3 +63,4 @@ def getModel(arch):
     else:
         raise ValueError('Invalid architecture name')
         return None
+'''

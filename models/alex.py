@@ -10,6 +10,12 @@ class Alex(chainer.Chain):
     insize = 227
     finetuned_model_path = './models/bvlc_alexnet.caffemodel'
 
+    layer_rank = {'conv1':1, 'relu1':2, 'norm1':3, 'pool1':4,
+            'conv2':5, 'relu2':6, 'norm2':7, 'pool2':8,
+            'conv3':9, 'relu3':10, 'conv4':11, 'relu4':12,
+            'conv5':13, 'relu5':14, 'pool5':15,
+            'fc6':16, 'relu6':17, 'fc7':18, 'relu7':19, 'fc8':20}
+
     def __init__(self, labelsize=config.labelsize):
         self.labelsize = labelsize
         super(Alex, self).__init__(
@@ -39,11 +45,3 @@ class Alex(chainer.Chain):
         loss = F.softmax_cross_entropy(h, t)
         chainer.report({'loss': loss, 'accuracy': F.accuracy(h, t)}, self)
         return loss
-
-    def layer2rank(self, layer):
-        l2r = {'conv1':1, 'relu1':2, 'norm1':3, 'pool1':4,
-                'conv2':5, 'relu2':6, 'norm2':7, 'pool2':8,
-                'conv3':9, 'relu3':10, 'conv4':11, 'relu4':12,
-                'conv5':13, 'relu5':14, 'pool5':15,
-                'fc6':16, 'relu6':17, 'fc7':18, 'relu7':19, 'fc8':20}
-        return l2r[layer]

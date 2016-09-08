@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Example code of learning a large scale convnet from ILSVRC2012 dataset.
+"""Train convnet for MINC-2500 dataset.
 
 Prerequisite: To run this example, crop the center of ILSVRC2012 training and
 validation images and scale them to 256x256, and make two lists of space-
@@ -16,12 +16,14 @@ import numpy as np
 import chainer
 from chainer import training
 from chainer.training import extensions
-
+from chainer import cuda
 import models
 import finetuning
 import preprocessed_dataset as ppds
+import evaluator_plus
 import datetime
 import time
+import dataio
 
 image_size = 362
 
@@ -40,6 +42,8 @@ def main(args):
         chainer.serializers.load_npz(args.initmodel, model)
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()  # Make the GPU current
+        #if args.test:
+        #cuda.cudnn_enabled = False
         model.to_gpu()
 
     nowt = datetime.datetime.today()
@@ -77,8 +81,12 @@ def main(args):
     # Copy the chain with shared parameters to flip 'train' flag only in test
     eval_model = model.copy()
     eval_model.train = False
-
-    val_evaluator = extensions.Evaluator(val_iter, eval_model, device=args.gpu)
+    if not args.test:
+        val_evaluator = extensions.Evaluator(val_iter, eval_model, device=args.gpu)
+    else:
+        val_evaluator = evaluator_plus.EvaluatorPlus(val_iter, eval_model, device=args.gpu)
+        if 'googlenet' in args.arch:
+            val_evaluator.lastname = 'validation/main/loss3'
     trainer.extend(val_evaluator, trigger=val_interval)
     trainer.extend(extensions.dump_graph('main/loss'))
     trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
@@ -104,12 +112,23 @@ def main(args):
 
     results = val_evaluator()
     results['outputdir'] = outputdir
+
+    if args.test:
+        print(val_evaluator.confmat)
+        categories = dataio.load_categories(args.categories)
+        confmat_csv_name = args.initmodel + '.csv'
+        confmat_fig_name = args.initmodel + '.eps'
+        dataio.save_confmat_csv(confmat_csv_name, val_evaluator.confmat, categories)
+        dataio.save_confmat_fig(confmat_fig_name, val_evaluator.confmat, categories,
+                                mode="rate", saveFormat="eps")
     return results
 
 parser = argparse.ArgumentParser(
     description='Learning convnet from MINC-2500 dataset')
 parser.add_argument('train', help='Path to training image-label list file')
 parser.add_argument('val', help='Path to validation image-label list file')
+parser.add_argument('--categories', '-c', default='categories.txt',
+                    help='Path to category list file')
 parser.add_argument('--arch', '-a', choices=models.archs.keys(), default='nin',
                     help='Convnet architecture')
 parser.add_argument('--batchsize', '-B', type=int, default=32,
@@ -121,12 +140,12 @@ parser.add_argument('--gamma', default=0.7, type=float,
 parser.add_argument('--epoch', '-E', type=int, default=10,
                     help='Number of epochs to train')
 parser.add_argument('--gpu', '-g', type=int, default=-1,
-                    help='GPU ID (negative value indicates CPU')
+                    help='GPU ID (negative value indicates CPU)')
 parser.add_argument('--finetune', '-f', default=False, action='store_true',
                     help='do fine-tuning if this flag is set (default: False)')
 parser.add_argument('--initmodel',
                     help='Initialize the model from given file')
-parser.add_argument('--ignore', nargs='+', default=[],
+parser.add_argument('--ignore', nargs='*', default=[],
                     help='Ignored layers in parameter copy')
 parser.add_argument('--loaderjob', '-j', type=int,
                     help='Number of parallel data loading processes')

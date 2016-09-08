@@ -80,7 +80,7 @@ def read_crop_image(path, insize, mean_image=None, flip=False):
     else:
         return image
 
-def load_num2label(path):
+def load_categories(path):
     tuples = []
     for line in open(path):
         pair = line.strip().split()
@@ -109,16 +109,15 @@ def load_image_list(path, root='.'):
         tuples.append((os.path.join(root, pair[0]), np.int32(pair[1])))
     return tuples
 
-def save_confusion_matrix(path, matrix, labels):
-    labelsize = len(labels)
-    matrix = matrix.reshape((labelsize, labelsize))
+def save_confmat_csv(path, matrix, labels):
+    n_categories = matrix.shape[0]
     content = 'true\\pred'
     for labelname in labels:
         content = content + '\t' + labelname
     content = content + '\n'
-    for true_idx in six.moves.range(labelsize):
+    for true_idx in six.moves.range(n_categories):
         content = content + labels[true_idx]
-        for pred_idx in six.moves.range(labelsize):
+        for pred_idx in six.moves.range(n_categories):
             content = content + '\t' + str(int(matrix[true_idx, pred_idx]))
         content = content + '\n'
     with open(path, 'w') as f:
@@ -154,9 +153,9 @@ def get_act_table(path, val_list, acts, rank=10):
 
 
 # save confusion matrix as .png image
-def save_confmat_fig0(conf_arr, savename, labels):
+def save_confmat_fig0(matrix, savename, labels):
     norm_conf = []
-    for i in conf_arr:
+    for i in matrix:
         #print(i)
         a = 0
         tmp_arr = []
@@ -172,12 +171,12 @@ def save_confmat_fig0(conf_arr, savename, labels):
     res = ax.imshow(np.array(norm_conf), cmap=plt.cm.jet,
                 interpolation='nearest')
 
-    width = len(conf_arr)
-    height = len(conf_arr[0])
+    width = len(matrix)
+    height = len(matrix[0])
 
     for x in xrange(width):
         for y in xrange(height):
-            ax.annotate(str(conf_arr[x][y]), xy=(y, x),
+            ax.annotate(str(matrix[x][y]), xy=(y, x),
                         horizontalalignment='center',
                         verticalalignment='center')
 
@@ -188,12 +187,13 @@ def save_confmat_fig0(conf_arr, savename, labels):
     plt.savefig(savename, format='png')
 
 
-def save_confmat_fig(conf_arr, savename, labels,
+def save_confmat_fig(savename, matrix, labels,
                      xlabel=None, ylabel=None, saveFormat="png",
-                     title=None, clim=(None,None), mode="vote", cmap=plt.cm.Blues):
+                     title=None, clim=(None,None), mode="vote",
+                     cmap=plt.cm.Blues, hide_zero=True):
     if mode=="rate":
         conf_rate = []
-        for i in conf_arr:
+        for i in matrix:
             tmp_arr = []
             total = float(sum(i))
             for j in i:
@@ -202,9 +202,9 @@ def save_confmat_fig(conf_arr, savename, labels,
                 else:
                     tmp_arr.append(float(j)/total)
             conf_rate.append(tmp_arr)
-        conf_arr = conf_rate
+        matrix = conf_rate
     norm_conf = []
-    for i in conf_arr:
+    for i in matrix:
         a = 0
         tmp_arr = []
         a = sum(i, 0)
@@ -214,7 +214,7 @@ def save_confmat_fig(conf_arr, savename, labels,
             else:
                 tmp_arr.append(float(j)/float(a))
         norm_conf.append(tmp_arr)
-    fig = plt.figure()
+    fig = plt.figure(figsize=(8*2, 6*2))
     plt.clf()
     plt.subplots_adjust(top=0.85) # use a lower number to make more vertical space
     ax = fig.add_subplot(111)
@@ -230,8 +230,8 @@ def save_confmat_fig(conf_arr, savename, labels,
         if clim!=(None,None):
             plt.clim(*clim)
         threshold = np.mean([np.max(norm_conf),np.min(norm_conf)])
-    width = len(conf_arr)
-    height = len(conf_arr[0])
+    width = len(matrix)
+    height = len(matrix[0])
 
     for x in xrange(width):
         for y in xrange(height):
@@ -240,11 +240,11 @@ def save_confmat_fig(conf_arr, savename, labels,
             else:
                 textcolor = '0.0'
             if mode == "rate":
-                ax.annotate("{0:d}".format(int(conf_arr[x][y]*100)), xy=(y, x),
+                ax.annotate("" if hide_zero and matrix[x][y] == 0 else "{0:.1f}".format(matrix[x][y]*100), xy=(y, x),
                             horizontalalignment='center',
-                            verticalalignment='center', color=textcolor, fontsize=15)
+                            verticalalignment='center', color=textcolor, fontsize=8)
             else:
-                ax.annotate("{0}".format(conf_arr[x][y]), xy=(y, x),
+                ax.annotate("{0}".format(matrix[x][y]) if matrix[x][y] == 0 else "", xy=(y, x),
                             horizontalalignment='center',
                             verticalalignment='center', color=textcolor, fontsize=15)
 
@@ -256,7 +256,7 @@ def save_confmat_fig(conf_arr, savename, labels,
                  fontsize=20,
                  transform = ax.transAxes)
     ax.xaxis.tick_top()
-    plt.xticks(range(width), labels[:width], rotation=45, fontsize=15)
+    plt.xticks(range(width), labels[:width], rotation=45, rotation_mode='anchor', ha='left', fontsize=15)
     plt.yticks(range(height), labels[:height], fontsize=15)
     if xlabel != None:
         plt.xlabel(xlabel)
