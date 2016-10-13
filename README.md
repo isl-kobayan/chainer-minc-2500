@@ -8,6 +8,14 @@ MINC-2500 dataset: [download](http://opensurfaces.cs.cornell.edu/static/minc/min
 Sean Bell and Paul Upchurch and Noah Snavely and Kavita Bala,  
 Computer Vision and Pattern Recognition (CVPR), 2015.
 
+## Requirements
+* chainer 1.15+
+* numpy
+* scikit-learn
+* Pillow
+* matplotlib
+* tqdm
+
 ## Usage
 ### preparation
 * put ''minc-2500'' directory in ''chainer-minc-2500'' directory
@@ -22,7 +30,7 @@ python download_mean_file.py
 ```
 python download_model.py
 ```
-* available fine-tuned architechures are:
+* available pre-trained architechures are:
   * [AlexNet](https://github.com/BVLC/caffe/tree/master/models/bvlc_alexnet)
   * [GoogLeNet](https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet)
   * VGG ([16 layers](https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md) and [19 layers](https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md))
@@ -32,6 +40,8 @@ python download_model.py
   see [Caffe Model Zoo](https://github.com/BVLC/caffe/wiki/Model-Zoo) for more details.
 
 ### train/validate
+example:
+
 * architecture: GoogLeNet
 * fine-tuning: on
 * use GPU
