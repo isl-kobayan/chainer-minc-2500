@@ -18,9 +18,10 @@ from chainer import training
 from chainer.training import extensions
 from chainer import cuda
 import models
-import finetuning
+import utils
+import utils.finetuning
 import preprocessed_dataset as ppds
-import evaluator_plus
+import utils.evaluator_plus
 import datetime
 import time
 import dataio
@@ -90,7 +91,7 @@ def main(args):
     if not args.test:
         val_evaluator = extensions.Evaluator(val_iter, eval_model, device=args.gpu)
     else:
-        val_evaluator = evaluator_plus.EvaluatorPlus(val_iter, eval_model, device=args.gpu)
+        val_evaluator = utils.EvaluatorPlus(val_iter, eval_model, device=args.gpu)
         if 'googlenet' in args.arch:
             val_evaluator.lastname = 'validation/main/loss3'
     trainer.extend(val_evaluator, trigger=val_interval)

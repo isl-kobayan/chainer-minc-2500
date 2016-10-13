@@ -18,7 +18,8 @@ from chainer import training
 from chainer.training import extensions
 from chainer import cuda
 import models
-import finetuning
+import utils
+import utils.finetuning
 import preprocessed_dataset as ppds
 import evaluator_plus
 import datetime
@@ -94,7 +95,7 @@ def main(args):
     # Copy the chain with shared parameters to flip 'train' flag only in test
     eval_model = model.copy()
     eval_model.train = False
-    val_acquirer = acquirer.Acquirer(val_iter, eval_model, device=args.gpu)
+    val_acquirer = utils.Acquirer(val_iter, eval_model, device=args.gpu)
     val_acquirer.layer_rank = eval_model.layer_rank[args.layer]
     val_acquirer.layer_name = args.layer
     val_acquirer.operation = args.operation
