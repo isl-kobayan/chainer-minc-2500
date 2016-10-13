@@ -21,22 +21,12 @@ def main(args):
     insize = model.insize
     tiled_image_path = os.path.splitext(args.indices)[0] + '.jpg'
 
-    # read val
-    with open(args.val) as pairs_file:
-        pairs = []
-        for i, line in enumerate(pairs_file):
-            pair = line.strip().split()
-            if len(pair) != 2:
-                raise ValueError(
-                    'invalid format at line {} in file {}'.format(
-                        i, args.val))
-            pairs.append((pair[0], int(pair[1])))
-
+    val = dataio.load_image_list(args.val)
     indices = np.loadtxt(args.indices, delimiter="\t", dtype='i')
     rows = indices.shape[0]
     cols = indices.shape[1]
-    paths = [pairs[i][0] for i in indices.flatten()]
-    labels = [pairs[i][1] for i in indices.flatten()]
+    paths = [val[i][0] for i in indices.flatten()]
+    labels = [val[i][1] for i in indices.flatten()]
     label_map = np.asarray(labels, dtype=np.int32).reshape(indices.shape)
     categories = dataio.load_categories(args.categories)
     C = len(categories)

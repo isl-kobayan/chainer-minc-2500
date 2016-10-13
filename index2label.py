@@ -11,6 +11,7 @@ import argparse
 import numpy as np
 import os
 from PIL import Image
+import dataio
 
 def main(args):
     if args.initdir is not None:
@@ -20,16 +21,8 @@ def main(args):
     if not os.path.exists(outputdir):
         os.makedirs(outputdir)
 
-    # read val
-    with open(args.val) as pairs_file:
-        labels = []
-        for i, line in enumerate(pairs_file):
-            pair = line.strip().split()
-            if len(pair) != 2:
-                raise ValueError(
-                    'invalid format at line {} in file {}'.format(
-                        i, args.val))
-            labels.append(int(pair[1]))
+    val = dataio.load_image_list(args.val)
+    labels = [v[1] for v in val]
 
     if args.indices is None:
         if args.initdir is not None:
