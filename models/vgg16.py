@@ -10,6 +10,7 @@ class VGG16(chainer.Chain):
     insize = 224
     finetuned_model_path = './models/VGG_ILSVRC_16_layers.caffemodel'
     mean_value = (103.939, 116.779, 123.68)
+    #mean_value = (104, 117, 124)
 
     layer_rank = {'conv1_1':1, 'conv1_2':3, 'pool1':5,
         'conv2_1':6, 'conv2_2':8, 'pool2':10,

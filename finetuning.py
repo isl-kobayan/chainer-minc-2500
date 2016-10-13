@@ -9,7 +9,7 @@ def copy_model(src, dst, ignore_layers=None):
     assert isinstance(dst, link.Chain)
     for child in src.children():
         if child.name not in dst.__dict__: continue
-        if child.name in ignore_layers: continue
+        if ignore_layers is not None and child.name in ignore_layers: continue
         dst_child = dst[child.name]
         if type(child) != type(dst_child): continue
         if isinstance(child, link.Chain):

@@ -7,7 +7,8 @@ class GoogLeNet(chainer.Chain):
 
     insize = 224
     finetuned_model_path = './models/bvlc_googlenet.caffemodel'
-    mean_value = (104, 117, 123)
+    #mean_value = (104, 117, 123)
+    mean_value = (104, 117, 124)
 
     layer_rank = {'conv1':1, 'relu1':2, 'pool1':3, 'norm1':4,
         'conv2_reduce':5, 'relu2_reduce':6,
@@ -15,7 +16,7 @@ class GoogLeNet(chainer.Chain):
         'inception_3a':15, 'inception_3b':20, 'pool3':21,
         'inception_4a':26, 'inception_4b':31, 'inception_4c':36, 'inception_4d':41, 'inception_4e':46,
         'pool4':47, 'inception_5a':52, 'inception_5b':57,
-        'pool5':58, 'loss3/classifier':59}
+        'pool5':58, 'loss3_classifier':59}
 
     def call_inception(self, x, name):
         out1 = self[name + '/1x1'](x)

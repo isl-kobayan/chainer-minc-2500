@@ -25,6 +25,7 @@ import datetime
 import time
 import dataio
 import os
+import acquirer
 
 image_size = 362
 
@@ -34,7 +35,7 @@ def makeMeanImage(mean_value):
     return mean_image
 
 def main(args):
-    # chainer.set_debug(True)
+    chainer.set_debug(True)
     # Initialize the model to train
     model = models.archs[args.arch]()
     if args.finetune and hasattr(model, 'finetuned_model_path'):
@@ -49,9 +50,11 @@ def main(args):
         model.to_gpu()
 
     nowt = datetime.datetime.today()
-    outputdir = args.out + '/' + args.arch + '/' + nowt.strftime("%Y%m%d-%H%M")  + '_bs' +  str(args.batchsize)
-    if args.test and args.initmodel is not None:
+    outputdir = os.path.join(args.out, args.arch, 'extract')
+    if args.initmodel is not None:
         outputdir = os.path.dirname(args.initmodel)
+        if args.indices is None:
+            args.indices = os.path.join(outputdir, 'top_' + args.layer + '.txt')
     # Load the datasets and mean file
     mean = None
     if hasattr(model, 'mean_value'):
@@ -60,93 +63,118 @@ def main(args):
         mean = np.load(args.mean)
     assert mean is not None
 
-    train = ppds.PreprocessedDataset(args.train, args.root, mean, model.insize)
-    val = ppds.PreprocessedDataset(args.val, args.root, mean, model.insize, False)
+    if args.indices is None:
+        args.indices = os.path.join(args.out, args.arch, 'extract', 'top_' + args.layer + '.txt')
+
+    #top_path = os.path.join(args.out, args.arch, 'extract', 'top_' + args.layer + '.txt')
+    #train = ppds.PreprocessedDataset(args.train, args.root, mean, model.insize)
+    val = ppds.PreprocessedDataset(args.val, args.root, mean, model.insize, False, args.indices)
     # These iterators load the images with subprocesses running in parallel to
     # the training/validation.
-    train_iter = chainer.iterators.MultiprocessIterator(
-        train, args.batchsize, shuffle=False, n_processes=args.loaderjob)
+    #train_iter = chainer.iterators.MultiprocessIterator(
+    #    train, args.batchsize, shuffle=False, n_processes=args.loaderjob)
     #val_iter = chainer.iterators.MultiprocessIterator(
     #    val, args.val_batchsize, repeat=False, shuffle=False, n_processes=args.loaderjob)
     val_iter = chainer.iterators.SerialIterator(
             val, args.val_batchsize, repeat=False, shuffle=False)
 
     # Set up an optimizer
-    optimizer = chainer.optimizers.MomentumSGD(lr=args.baselr, momentum=0.9)
+    optimizer = chainer.optimizers.MomentumSGD()
     optimizer.setup(model)
 
     # Set up a trainer
-    updater = training.StandardUpdater(train_iter, optimizer, device=args.gpu)
-    trainer = training.Trainer(updater, (args.epoch, 'epoch'), outputdir)
+    updater = training.StandardUpdater(val_iter, optimizer, device=args.gpu)
+    trainer = training.Trainer(updater, (1, 'epoch'), outputdir)
 
     #val_interval = (10 if args.test else int(len(train) / args.batchsize)), 'iteration'
-    val_interval = (10, 'iteration') if args.test else (1, 'epoch')
-    snapshot_interval = (10, 'iteration') if args.test else (4, 'epoch')
-    log_interval = (10 if args.test else 200), 'iteration'
+    val_interval = (1, 'iteration')
+    #snapshot_interval = (10, 'iteration') if args.test else (2, 'epoch')
+    log_interval = (10, 'iteration')
 
     # Copy the chain with shared parameters to flip 'train' flag only in test
     eval_model = model.copy()
     eval_model.train = False
-    if not args.test:
-        val_evaluator = extensions.Evaluator(val_iter, eval_model, device=args.gpu)
-    else:
-        val_evaluator = evaluator_plus.EvaluatorPlus(val_iter, eval_model, device=args.gpu)
-        if 'googlenet' in args.arch:
-            val_evaluator.lastname = 'validation/main/loss3'
-    trainer.extend(val_evaluator, trigger=val_interval)
-    trainer.extend(extensions.dump_graph('main/loss'))
-    trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
-    trainer.extend(extensions.snapshot_object(
-        model, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
+    val_acquirer = acquirer.Acquirer(val_iter, eval_model, device=args.gpu)
+    val_acquirer.layer_rank = eval_model.layer_rank[args.layer]
+    val_acquirer.layer_name = args.layer
+    val_acquirer.operation = args.operation
+    val_acquirer.top = args.top
+    val_acquirer.n_features = val.cols
+    if 'googlenet' in args.arch:
+        val_acquirer.lastname = 'validation/main/loss3'
+    trainer.extend(val_acquirer, trigger=val_interval)
+    #trainer.extend(extensions.dump_graph('main/loss'))
+    #trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
+    #trainer.extend(extensions.snapshot_object(
+    #    model, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
-    trainer.extend(extensions.LogReport(trigger=log_interval))
+    #trainer.extend(extensions.LogReport(trigger=log_interval))
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'main/loss', 'validation/main/loss',
         'main/accuracy', 'validation/main/accuracy',
     ]), trigger=log_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
-    trainer.extend(extensions.ExponentialShift('lr', args.gamma),
-        trigger=(1, 'epoch'))
+    #trainer.extend(extensions.ExponentialShift('lr', args.gamma),
+    #    trigger=(1, 'epoch'))
 
     if args.resume:
         chainer.serializers.load_npz(args.resume, trainer)
 
-    if not args.test:
-        trainer.run()
-        chainer.serializers.save_npz(outputdir + '/model', model)
-        with open(outputdir + '/args.txt', 'w') as o:
-            print(args, file=o)
+    #if not args.test:
+    #    trainer.run()
+    #    chainer.serializers.save_npz(outputdir + '/model', model)
 
-    results = val_evaluator(trainer)
+    results = val_acquirer(trainer)
     results['outputdir'] = outputdir
 
-    if args.test:
-        print(val_evaluator.confmat)
-        categories = dataio.load_categories(args.categories)
-        confmat_csv_name = args.initmodel + '.csv'
-        confmat_fig_name = args.initmodel + '.eps'
-        dataio.save_confmat_csv(confmat_csv_name, val_evaluator.confmat, categories)
-        dataio.save_confmat_fig(confmat_fig_name, val_evaluator.confmat, categories,
-                                mode="rate", saveFormat="eps")
+    #if eval_model.layer_rank[args.layer] == 1:
+    #    save_first_conv_filter(os.path.join(outputdir, args.layer),
+    #    model[args.layer].W.data, cols = args.cols, pad = args.pad,
+    #    scale = args.scale, gamma = args.gamma)
+
+    #if args.test:
+    #print(val_acquirer.confmat)
+    #categories = dataio.load_categories(args.categories)
+    #confmat_csv_name = args.initmodel + '.csv'
+    #confmat_fig_name = args.initmodel + '.eps'
+    #dataio.save_confmat_csv(confmat_csv_name, val_acquirer.confmat, categories)
+    #dataio.save_confmat_fig(confmat_fig_name, val_acquirer.confmat, categories,
+    #                        mode="rate", saveFormat="eps")
     return results
 
 parser = argparse.ArgumentParser(
     description='Learning convnet from MINC-2500 dataset')
-parser.add_argument('train', help='Path to training image-label list file')
+#parser.add_argument('train', help='Path to training image-label list file')
 parser.add_argument('val', help='Path to validation image-label list file')
 parser.add_argument('--categories', '-c', default='categories.txt',
                     help='Path to category list file')
 parser.add_argument('--arch', '-a', choices=models.archs.keys(), default='nin',
                     help='Convnet architecture')
-parser.add_argument('--batchsize', '-B', type=int, default=32,
-                    help='Learning minibatch size')
-parser.add_argument('--baselr', default=0.001, type=float,
-                    help='Base learning rate')
-parser.add_argument('--gamma', default=0.7, type=float,
-                    help='Base learning rate')
-parser.add_argument('--epoch', '-E', type=int, default=10,
-                    help='Number of epochs to train')
+#parser.add_argument('--batchsize', '-B', type=int, default=32,
+#                    help='Learning minibatch size')
+#parser.add_argument('--baselr', default=0.001, type=float,
+#                    help='Base learning rate')
+#parser.add_argument('--gamma', default=0.7, type=float,
+#                    help='Base learning rate')
+#parser.add_argument('--epoch', '-E', type=int, default=10,
+#                    help='Number of epochs to train')
+parser.add_argument('--layer', '-l', default='conv1',
+                    help='layer name')
+parser.add_argument('--indices', '-i',
+                    help='indices file name (e.g. top_conv1.txt)')
+parser.add_argument('--operation', '-op', choices=('max', 'mean'), default='max',
+                    help='operation')
+parser.add_argument('--scale', '-s', type=int, default=1,
+                    help='filter scale')
+parser.add_argument('--pad', '-p', type=int, default=1,
+                    help='filter padding')
+parser.add_argument('--cols', type=int, default=1,
+                    help='columns')
+parser.add_argument('--gamma', '-G', type=float, default=1.0,
+                    help='gamma')
+parser.add_argument('--top', '-t', type=int, default=10,
+                    help='gather top n activated images')
 parser.add_argument('--gpu', '-g', type=int, default=-1,
                     help='GPU ID (negative value indicates CPU)')
 parser.add_argument('--finetune', '-f', default=False, action='store_true',
@@ -167,8 +195,8 @@ parser.add_argument('--root', '-R', default='.',
                     help='Root directory path of image files')
 parser.add_argument('--val_batchsize', '-b', type=int, default=20,
                     help='Validation minibatch size')
-parser.add_argument('--test', action='store_true')
-parser.set_defaults(test=False)
+#parser.add_argument('--test', action='store_true')
+#parser.set_defaults(test=False)
 
 if __name__ == '__main__':
     args = parser.parse_args()

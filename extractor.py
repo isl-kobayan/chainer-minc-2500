@@ -12,13 +12,16 @@ from chainer.training import extension
 from chainer import variable
 from chainer import cuda
 import numpy as np
+import cupy
 import os
-from scipy.stats import rankdata
-from tqdm import tqdm
 
-class EvaluatorPlus(extensions.Evaluator):
+class Extractor(extensions.Evaluator):
     lastname = 'validation/main/loss'
-    confmat = None
+    layer_rank = None
+    layer_name = None
+    operation = 'max'
+    top = None
+    save_features = True
 
     '''trigger = 1, 'epoch'
     default_name = 'validation'
@@ -38,49 +41,6 @@ class EvaluatorPlus(extensions.Evaluator):
         self.device = device
         self.eval_hook = eval_hook
         self.eval_func = eval_func'''
-
-    def get_n_categories(self, loss):
-        v = loss
-        before_softmax=None
-        while (v.creator is not None):
-            if v.creator.label == 'SoftmaxCrossEntropy':
-                before_softmax = v.creator.inputs[0]
-                break
-            v = v.creator.inputs[0]
-        return before_softmax.data.shape[1]
-
-    def add_to_confmat(self, confmat, truth, pred):
-        for (t, p) in zip((int(x) for x in truth), (int(y) for y in pred)):
-            confmat[t, p] += 1
-
-    def getpred(self, loss):
-        xp = cuda.get_array_module(loss.data)
-        v = loss
-        before_softmax=None
-        while (v.creator is not None):
-            if v.creator.label == 'SoftmaxCrossEntropy':
-                before_softmax = v.creator.inputs[0]
-                break
-            v = v.creator.inputs[0]
-        return xp.argmax(before_softmax.data, axis=1)
-
-    def getranking(self, loss, t):
-        xp = cuda.get_array_module(loss.data)
-        v = loss
-        before_softmax=None
-        while (v.creator is not None):
-            if v.creator.label == 'SoftmaxCrossEntropy':
-                before_softmax = v.creator.inputs[0]
-                break
-            v = v.creator.inputs[0]
-        if xp == np:
-            data = before_softmax.data
-        else:
-            data = before_softmax.data.get()
-
-        b = [rankdata(p[1], method='dense')[int(p[0])] for p in zip(t, -data)]
-
-        return b
 
     def printloss(self, loss):
         v = loss
@@ -109,11 +69,39 @@ class EvaluatorPlus(extensions.Evaluator):
             v = v.creator.inputs[0]
         return None
 
-    def save_predictions(self, path, predictions):
-        with open(path, 'w') as f:
-            for batch in predictions:
-                for p in batch:
-                    f.write(str(p) + '\n')
+    def get_variable(self, loss, rank):
+        v = loss
+        while (v.creator is not None):
+            if v.rank == rank:
+                return v.creator.outputs[0]()
+            v = v.creator.inputs[0]
+        return None
+
+    def get_features(self, loss, rank, operation=None):
+        variable = self.get_variable(loss, rank)
+        ax = (2,3) if len(variable.data.shape) == 4 else 1
+        if operation == 'max':
+            return variable.data.max(axis=ax)
+        elif operation == 'argmax':
+            return variable.data.argmax(axis=ax)
+        elif operation == 'mean':
+            return variable.data.mean(axis=ax)
+        else:
+            return variable.data
+
+    def savetxt(self, fname, X, fmt='%.18e', delimiter='', newline='\n', header='', footer='', comments='#'):
+        xp = cuda.get_array_module(X)
+        if xp is np:
+            np.savetxt(fname, X, fmt, delimiter, newline, header, footer, comments)
+        else:
+            np.savetxt(fname, X.get(), fmt, delimiter, newline, header, footer, comments)
+
+    def get_argmax_N(self, X, N):
+        xp = cuda.get_array_module(X)
+        if xp is np:
+            return np.argsort(X, axis=0)[::-1][:N]
+        else:
+            return np.argsort(X.get(), axis=0)[::-1][:N]
 
     def __call__(self, trainer):
         """override method of extensions.Evaluator."""
@@ -129,12 +117,26 @@ class EvaluatorPlus(extensions.Evaluator):
                                    target.namedlinks(skipself=True))
 
         with reporter:
-            result, predictions, rankings = self.evaluate()
-            #print(result)
-            #print(predictions)
-            self.save_predictions(os.path.join(trainer.out, 'pred.txt'), predictions)
-            self.save_predictions(os.path.join(trainer.out, 'ranking.txt'), rankings)
+            result, features = self.evaluate()
+            if not os.path.exists(trainer.out):
+                os.makedirs(trainer.out)
+            #self.savetxt(os.path.join(trainer.out, self.layer_name + '.txt'),
+            #                features, delimiter='\t')
+            #cupy.savez(os.path.join(trainer.out, self.layer_name + '.npz'),
+            #                **{self.layer_name: features})
+            if self.save_features:
+                cupy.save(os.path.join(trainer.out, self.layer_name + '.npy'),
+                        features)
 
+            if self.top is not None:
+                top_N_args = self.get_argmax_N(features, self.top)
+                #print(top_N_args)
+                np.savetxt(os.path.join(trainer.out,
+                            'top_' + self.layer_name + '.txt'), top_N_args,
+                            fmt='%d', delimiter='\t')
+                #np.savez(os.path.join(trainer.out,
+                #            'top_' + self.layer_name + '.npz'),
+                #            **{self.layer_name: top_N_args})
         reporter_module.report(result)
         return result
 
@@ -149,11 +151,8 @@ class EvaluatorPlus(extensions.Evaluator):
             self.eval_hook(self)
         it = copy.copy(iterator)
         summary = reporter_module.DictSummary()
-        predictions = []
-        rankings = []
-        n_categories = 0
-        pbar = tqdm(total=len(it.dataset))
-        self.confmat = None
+        features = None
+        max_loc = None
         for batch in it:
             observation = {}
             with reporter_module.report_scope(observation):
@@ -170,18 +169,16 @@ class EvaluatorPlus(extensions.Evaluator):
                     in_var = variable.Variable(in_arrays, volatile='off')
                     eval_func(in_var)
 
-            if n_categories == 0:
-                n_categories = self.get_n_categories(observation[self.lastname])
-                self.confmat = np.zeros((n_categories, n_categories), dtype=np.int32)
-                #self.printloss(observation[self.lastname])
-                #print(self.getpred(observation[self.lastname]))
-
-            predictions.append(self.getpred(observation[self.lastname]))
-            rankings.append(self.getranking(observation[self.lastname], in_vars[1].data))
-            self.add_to_confmat(self.confmat, in_vars[1].data, self.getpred(observation[self.lastname]))
+            if features is None:
+                features = self.get_features(
+                    observation[self.lastname], self.layer_rank, self.operation)
+            else:
+                xp = cuda.get_array_module(features)
+                features = xp.vstack((features, self.get_features(
+                    observation[self.lastname], self.layer_rank, self.operation)))
+            #self.add_to_confmat(self.confmat, in_vars[1].data, self.getpred(observation[self.lastname]))
             summary.add(observation)
-            pbar.update(len(batch))
         #print(self.confmat)
         #print(np.diag(self.confmat))
         #print(1.0 * np.diag(self.confmat).sum() / self.confmat.sum())
-        return summary.compute_mean(), predictions, rankings
+        return summary.compute_mean(), features

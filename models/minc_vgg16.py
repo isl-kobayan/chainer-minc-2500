@@ -11,6 +11,13 @@ class MINC_VGG16(chainer.Chain):
     finetuned_model_path = './models/minc-vgg16.caffemodel'
     mean_value = (104, 117, 124)
 
+    layer_rank = {'conv1_1':1, 'conv1_2':3, 'pool1':5,
+        'conv2_1':6, 'conv2_2':8, 'pool2':10,
+        'conv3_1':11, 'conv3_2':13, 'conv3_3':15, 'pool3':17,
+        'conv4_1':18, 'conv4_2':20, 'conv4_3':22, 'pool4':24,
+        'conv5_1':25, 'conv5_2':27, 'conv5_3':29, 'pool5':31,
+        'fc6':32, 'fc7':34, 'fc8-20':36}
+
     def __init__(self, labelsize=config.labelsize):
         self.labelsize = labelsize
         super(MINC_VGG16, self).__init__(

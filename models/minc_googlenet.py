@@ -9,6 +9,14 @@ class MINC_GoogLeNet(chainer.Chain):
     finetuned_model_path = './models/minc-googlenet.caffemodel'
     mean_value = (104, 117, 124)
 
+    layer_rank = {'conv1':1, 'relu1':2, 'pool1':3, 'norm1':4,
+        'conv2_reduce':5, 'relu2_reduce':6,
+        'conv2':7, 'relu2':8, 'norm2':9, 'pool2':10,
+        'inception_3a':15, 'inception_3b':20, 'pool3':21,
+        'inception_4a':26, 'inception_4b':31, 'inception_4c':36, 'inception_4d':41, 'inception_4e':46,
+        'pool4':47, 'inception_5a':52, 'inception_5b':57,
+        'pool5':58, 'fc8-20':59}
+
     def call_inception(self, x, name):
         out1 = self[name + '/1x1'](x)
         out3 = self[name + '/3x3'](F.relu(self[name + '/3x3_reduce'](x)))
