@@ -1,5 +1,5 @@
 # chainer-minc-2500
-train/validate minc-2500 dataset with [chainer 1.15](https://github.com/pfnet/chainer)
+train/validate minc-2500 dataset with [chainer](https://github.com/pfnet/chainer)
 
 MINC-2500 dataset: [download](http://opensurfaces.cs.cornell.edu/static/minc/minc-2500.tar.gz) 
 
@@ -7,6 +7,14 @@ MINC-2500 dataset: [download](http://opensurfaces.cs.cornell.edu/static/minc/min
 **[Material Recognition in the Wild with the Materials in Context Database](http://opensurfaces.cs.cornell.edu/publications/minc/)**  
 Sean Bell and Paul Upchurch and Noah Snavely and Kavita Bala,  
 Computer Vision and Pattern Recognition (CVPR), 2015.
+
+## Requirements
+* chainer 1.15+
+* numpy
+* scikit-learn
+* Pillow
+* matplotlib
+* tqdm
 
 ## Usage
 ### preparation
