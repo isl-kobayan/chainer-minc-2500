@@ -41,11 +41,7 @@ python download_model.py
   see [Caffe Model Zoo](https://github.com/BVLC/caffe/wiki/Model-Zoo) for more details.
 
 ### train/validate
-example:
-
-* architecture: GoogLeNet
-* fine-tuning: on
-* use GPU
+example: train(fine-tune) GoogLeNet with GPU
 ```
 python train_minc2500.py ./minc-2500/shuffled_labels/train1.txt \
 ./minc-2500/shuffled_labels/validate1.txt -a googlenet --finetune -E 10 -R ./minc-2500 -g 0
@@ -58,8 +54,7 @@ python gridsearch.py ./minc-2500/shuffled_labels/train1.txt \
 ```
 
 ### filter visualization
-example:
-* visualize "conv1" layer of imagenet-pretrained alexnet (bvlc_alexnet.caffemodel) using all minc-2500 images
+example: visualize "conv1" layer of imagenet-pretrained AlexNet (bvlc_alexnet.caffemodel) using all minc-2500 images
 
 1. extract filter output
   ```
