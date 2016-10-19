@@ -20,6 +20,7 @@ def main(args):
     model = models.archs[args.arch]()
     insize = model.insize
     tiled_image_path = os.path.splitext(args.indices)[0] + '.jpg'
+    label_path = os.path.splitext(args.indices)[0] + '_label.tsv'
 
     val = dataio.load_image_list(args.val)
     indices = np.loadtxt(args.indices, delimiter="\t", dtype='i')
@@ -51,7 +52,7 @@ def main(args):
             draw.rectangle(((x, y+insize-lw),(x+insize, y+insize)), outline=color, fill=color)
         if c == cols-1 or label_map[r, c+1] != label:
             draw.rectangle(((x+insize-lw, y),(x+insize, y+insize)), outline=color, fill=color)
-
+    np.savetxt(label_path, label_map, delimiter="\t", fmt="%d")
     tiled_image.save(tiled_image_path, 'JPEG', quality=100, optimize=True)
 
 parser = argparse.ArgumentParser(

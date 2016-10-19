@@ -24,6 +24,7 @@ def main(args):
     #    'cos-distance_' + os.path.basename(args.weights))
     map_path = os.path.splitext(args.vectors)[0] + '_som_map.npy'
     winidx_path = os.path.splitext(args.vectors)[0] + '_som_winidx.tsv'
+    hist_path = os.path.splitext(args.vectors)[0] + '_som_hist.tsv'
     mode_path = os.path.splitext(args.vectors)[0] + '_som_mode.tsv'
     nearest_path = os.path.splitext(args.vectors)[0] + '_som_nearest.tsv'
 
@@ -84,6 +85,8 @@ def main(args):
             f.write(str(idx[0]) + '\t' + str(idx[1]) + '\n')
             pbar.update(1)
     pbar.close()
+    np.savetxt(hist_path, hist_output_map.reshape((output_shape[0], -1)),
+                delimiter='\t', fmt='%d')
     mode_category = hist_output_map.argmax(axis=2)
     print(mode_category)
     np.savetxt(mode_path, mode_category, delimiter='\t', fmt='%d')

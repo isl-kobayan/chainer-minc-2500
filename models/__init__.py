@@ -10,7 +10,6 @@ import squeezenet11
 import minc_alex
 import minc_googlenet
 import minc_vgg16
-import numpy as np
 
 archs = {
     'alex': alex.Alex,
