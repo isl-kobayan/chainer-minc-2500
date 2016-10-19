@@ -40,7 +40,7 @@ def main(args):
     # Initialize the model to train
     model = models.archs[args.arch]()
     if args.finetune and hasattr(model, 'finetuned_model_path'):
-        finetuning.load_param(model.finetuned_model_path, model, args.ignore)
+        utils.finetuning.load_param(model.finetuned_model_path, model, args.ignore)
     if args.initmodel:
         print('Load model from', args.initmodel)
         chainer.serializers.load_npz(args.initmodel, model)
