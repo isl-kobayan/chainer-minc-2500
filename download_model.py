@@ -7,8 +7,8 @@ import six
 
 parser = argparse.ArgumentParser(
     description='Download a Caffe reference model')
-parser.add_argument('model_type', choices=('alexnet', 'caffenet', 'googlenet', 'nin', 'squeezenet10', 'squeezenet11','vgg16', 'vgg19'),
-                    help='Model type (alexnet, caffenet, googlenet, nin, squeezenet10, squeezenet11, vgg16, vgg19)')
+parser.add_argument('model_type', choices=('alexnet', 'caffenet', 'googlenet', 'googlenetbn', 'nin', 'squeezenet10', 'squeezenet11','vgg16', 'vgg19'),
+                    help='Model type (alexnet, caffenet, googlenet, googlenetbn, nin, squeezenet10, squeezenet11, vgg16, vgg19)')
 args = parser.parse_args()
 
 if args.model_type == 'alexnet':
@@ -21,6 +21,9 @@ elif args.model_type == 'caffenet':
 elif args.model_type == 'googlenet':
     url = 'http://dl.caffe.berkeleyvision.org/bvlc_googlenet.caffemodel'
     name = 'bvlc_googlenet.caffemodel'
+elif args.model_type == 'googlenetbn':
+    url = 'https://github.com/lim0606/caffe-googlenet-bn/blob/master/snapshots/googlenet_bn_stepsize_6400_iter_1200000.caffemodel?raw=true'
+    name = 'googlenet_bn.caffemodel'
 elif args.model_type == 'nin':
     url = 'https://www.dropbox.com/s/0cidxafrb2wuwxw/nin_imagenet.caffemodel?dl=1'
     name = 'nin_imagenet.caffemodel'

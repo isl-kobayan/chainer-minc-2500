@@ -56,7 +56,7 @@ def main(args):
     chainer.set_debug(True)
     # Initialize the model to train
     model = models.archs[args.arch]()
-    if hasattr(model, 'finetuned_model_path'):
+    if args.finetune and hasattr(model, 'finetuned_model_path'):
         utils.finetuning.load_param(model.finetuned_model_path, model)
     if args.initmodel:
         print('Load model from', args.initmodel)

@@ -44,15 +44,17 @@ parser.set_defaults(test=False)'''
 
 parser.add_argument('--trial', '-t', type=int, default=20,
                     help='trial count')
+parser.set_defaults(finetune=True)
+parser.set_defaults(gpu=0)
 
 args = parser.parse_args()
 
-archs = ['googlenet', 'vgg16']
+#archs = ['googlenet', 'vgg16']
 batchsize_range = 20, 32
 baselr_range = 0.0001, 0.005
 gamma_range = 0.3, 0.9
 
-#archs = ['googlenet']
+archs = ['googlenetbn']
 #batchsizes = [32]
 #baselrs = [0.001]
 #gammas = [0.5]
@@ -69,9 +71,9 @@ for i in range(args.trial):
     args.gamma = random.uniform(*gamma_range)
     val_result = train_minc2500.main(args)
 
-    result = val_result['outputdir'] + '\t' \
-        + args.arch + '\t' + str(args.batchsize) + '\t' + str(args.baselr) + '\t' + str(args.gamma) + '\t' \
-        + str(val_result['validation/main/loss']) + '\t' + str(val_result['validation/main/accuracy'])
+    result = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(val_result['outputdir'],
+        args.arch, args.batchsize, args.baselr, args.gamma,
+        val_result['validation/main/loss'], val_result['validation/main/accuracy'])
     with open(path_randomsearchlog, 'a') as f:
         f.write(result + '\n')
     results += result + '\n'
