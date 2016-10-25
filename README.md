@@ -41,11 +41,7 @@ python download_model.py
   see [Caffe Model Zoo](https://github.com/BVLC/caffe/wiki/Model-Zoo) for more details.
 
 ### train/validate
-example:
-
-* architecture: GoogLeNet
-* fine-tuning: on
-* use GPU
+example: train(fine-tune) GoogLeNet with GPU
 ```
 python train_minc2500.py ./minc-2500/shuffled_labels/train1.txt \
 ./minc-2500/shuffled_labels/validate1.txt -a googlenet --finetune -E 10 -R ./minc-2500 -g 0
@@ -58,26 +54,25 @@ python gridsearch.py ./minc-2500/shuffled_labels/train1.txt \
 ```
 
 ### filter visualization
-example:
-* visualize "conv1" layer of imagenet-pretrained alexnet (bvlc_alexnet.caffemodel) using all minc-2500 images
+example: visualize "conv1" layer of imagenet-pretrained AlexNet (bvlc_alexnet.caffemodel) using all minc-2500 images
 
 1. extract filter output
-```
-python extract_features.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
--m ilsvrc_2012_mean.npy -l conv1
-```
-This program generates "./result/alex/extract/top_conv1.txt".
+  ```
+  python extract_features.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
+  -m ilsvrc_2012_mean.npy -l conv1
+  ```  
+  This program generates "./result/alex/extract/top_conv1.txt".
 
 2. acquire most activated image (and region)
-```
-python acquire_patches.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
--m ilsvrc_2012_mean.npy -l conv1
-```
-This program generates "./result/alex/extract/maxbounds_conv1.txt" and "./result/alex/extract/maxloc_conv1.txt".
+  ```
+  python acquire_patches.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
+  -m ilsvrc_2012_mean.npy -l conv1
+  ```  
+  This program generates "./result/alex/extract/maxbounds_conv1.txt" and "./result/alex/extract/maxloc_conv1.txt".
 
 3. acquire activated patch
-```
-python acquire_patch_images.py ./minc-2500/all_list.txt -a alex -b 50 -R ./minc-2500 \
--m ilsvrc_2012_mean.npy -l conv1
-```
-This program generates "./result/alex/extract/conv1/*.png"
+  ```
+  python acquire_patch_images.py ./minc-2500/all_list.txt -a alex -b 50 -R ./minc-2500 \
+  -m ilsvrc_2012_mean.npy -l conv1
+  ```
+  This program generates "./result/alex/extract/conv1/*.png"
