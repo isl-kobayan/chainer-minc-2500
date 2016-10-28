@@ -21,7 +21,7 @@ import models
 import preprocessed_dataset as ppds
 import datetime
 import time
-import dataio
+import utils
 import os
 from PIL import Image
 
@@ -37,7 +37,7 @@ def main(args):
         outputdir = os.path.join(args.out, args.arch, 'extract')
     if not os.path.exists(outputdir):
         os.makedirs(outputdir)
-    categories = dataio.load_categories(args.categories)
+    categories = utils.io.load_categories(args.categories)
     # read val
     with open(args.val) as pairs_file:
         pairs = []

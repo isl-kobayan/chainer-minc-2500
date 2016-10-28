@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 """Train convnet for MINC-2500 dataset.
 
-Prerequisite: To run this example, crop the center of ILSVRC2012 training and
-validation images and scale them to 256x256, and make two lists of space-
-separated CSV whose first column is full path to image and second column is
-zero-origin label (this format is same as that used by Caffe's ImageDataLayer).
-
+Prerequisite: To run this example, put MINC-2500 dataset ("minc-2500" direcotry)
+              into this direcotry.
 """
 from __future__ import print_function
 import argparse
@@ -19,12 +16,9 @@ from chainer.training import extensions
 from chainer import cuda
 import models
 import utils
-import utils.finetuning
 import preprocessed_dataset as ppds
-import utils.evaluator_plus
 import datetime
 import time
-import dataio
 import os
 
 image_size = 362
@@ -134,11 +128,11 @@ def main(args):
 
     if args.test:
         print(val_evaluator.confmat)
-        categories = dataio.load_categories(args.categories)
+        categories = utils.io.load_categories(args.categories)
         confmat_csv_name = args.initmodel + '.csv'
         confmat_fig_name = args.initmodel + '.eps'
-        dataio.save_confmat_csv(confmat_csv_name, val_evaluator.confmat, categories)
-        dataio.save_confmat_fig(confmat_fig_name, val_evaluator.confmat, categories,
+        utils.io.save_confmat_csv(confmat_csv_name, val_evaluator.confmat, categories)
+        utils.io.save_confmat_fig(confmat_fig_name, val_evaluator.confmat, categories,
                                 mode="rate", saveFormat="eps")
     return results
 

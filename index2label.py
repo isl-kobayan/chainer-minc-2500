@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import os
 from PIL import Image
-import dataio
+import utils
 
 def main(args):
     if args.initdir is not None:
@@ -21,7 +21,7 @@ def main(args):
     if not os.path.exists(outputdir):
         os.makedirs(outputdir)
 
-    val = dataio.load_image_list(args.val)
+    val = utils.io.load_image_list(args.val)
     labels = [v[1] for v in val]
 
     if args.indices is None:

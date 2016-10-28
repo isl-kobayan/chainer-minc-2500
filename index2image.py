@@ -14,7 +14,7 @@ from PIL import Image
 from PIL import ImageDraw
 import models
 from matplotlib import cm
-import dataio
+import utils
 
 def main(args):
     model = models.archs[args.arch]()
@@ -22,14 +22,14 @@ def main(args):
     tiled_image_path = os.path.splitext(args.indices)[0] + '.jpg'
     label_path = os.path.splitext(args.indices)[0] + '_label.tsv'
 
-    val = dataio.load_image_list(args.val)
+    val = utils.io.load_image_list(args.val)
     indices = np.loadtxt(args.indices, delimiter="\t", dtype='i')
     rows = indices.shape[0]
     cols = indices.shape[1]
     paths = [val[i][0] for i in indices.flatten()]
     labels = [val[i][1] for i in indices.flatten()]
     label_map = np.asarray(labels, dtype=np.int32).reshape(indices.shape)
-    categories = dataio.load_categories(args.categories)
+    categories = utils.io.load_categories(args.categories)
     C = len(categories)
     print(label_map)
 

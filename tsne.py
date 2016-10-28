@@ -15,7 +15,7 @@ import scipy.spatial.distance as dis
 from sompy import SOM
 import numpy as np
 import matplotlib.pyplot as plt
-import dataio
+import utils
 from tqdm import tqdm
 from sklearn.manifold import TSNE
 
@@ -30,8 +30,8 @@ def main(args):
     nearest_path = os.path.splitext(args.vectors)[0] + '_tsne_nearest.tsv'
 
     print('loading val...')
-    val = dataio.load_image_list(args.val)
-    categories = dataio.load_categories(args.categories)
+    val = utils.io.load_image_list(args.val)
+    categories = utils.io.load_categories(args.categories)
 
     v = np.load(args.vectors)
     N = v.shape[0]

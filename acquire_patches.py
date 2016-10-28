@@ -19,12 +19,10 @@ from chainer.training import extensions
 from chainer import cuda
 import models
 import utils
-import utils.finetuning
 import preprocessed_dataset as ppds
 import evaluator_plus
 import datetime
 import time
-import dataio
 import os
 import acquirer
 
@@ -136,11 +134,11 @@ def main(args):
 
     #if args.test:
     #print(val_acquirer.confmat)
-    #categories = dataio.load_categories(args.categories)
+    #categories = utils.io.load_categories(args.categories)
     #confmat_csv_name = args.initmodel + '.csv'
     #confmat_fig_name = args.initmodel + '.eps'
-    #dataio.save_confmat_csv(confmat_csv_name, val_acquirer.confmat, categories)
-    #dataio.save_confmat_fig(confmat_fig_name, val_acquirer.confmat, categories,
+    #utils.io.save_confmat_csv(confmat_csv_name, val_acquirer.confmat, categories)
+    #utils.io.save_confmat_fig(confmat_fig_name, val_acquirer.confmat, categories,
     #                        mode="rate", saveFormat="eps")
     return results
 

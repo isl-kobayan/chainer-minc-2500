@@ -22,12 +22,11 @@ import preprocessed_dataset as ppds
 import evaluator_plus
 import datetime
 import time
-import dataio
+import utils
 import os
 import itertools
 import scipy.spatial.distance as dis
 import six
-import utils.finetuning
 from tqdm import tqdm
 
 def save_list(path, lst):

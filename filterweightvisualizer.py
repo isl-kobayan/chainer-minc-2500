@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-""" visualizing filters of convolutional layer.
-最初の畳み込み層のフィルタを可視化します。
+""" Visualizing convolution filters.
+畳み込みニューラルネットの畳み込み層のフィルタを可視化します。
 
-Prerequisite: To run this program, prepare model's weights data with hdf5 format.
-train_fmd.py等で生成される、hdf5形式で保存された重みデータ（model_googlenet）を用意してください。
+Prerequisite: To run this program, prepare model's weights data with npz format.
+train_minc-2500.py等で生成される、npz形式で保存された重みデータを用意してください。
 
 """
 from __future__ import print_function
@@ -42,7 +42,7 @@ def save_first_conv_filter(outdir, W, cols=1, pad=1, scale=1, gamma=1.0):
     all_img_height = h_step * rows + pad
     all_img = Image.new('RGB', (all_img_width, all_img_height), (255, 255, 255))
 
-    # if number of input channels is 3, visualize filter with RGB
+    # if number of input channels is 3, visualize filter by RGB
     if in_ch == 3:
         for i in six.moves.range(0, out_ch):
             filter_data = (((W[i][::-1].transpose(1, 2, 0) - Wmin) / Wrange) ** gamma) * 255
@@ -50,14 +50,14 @@ def save_first_conv_filter(outdir, W, cols=1, pad=1, scale=1, gamma=1.0):
             if args.scale > 1:
                 img = img.resize((width * scale, height * scale), Image.NEAREST)
             all_img.paste(img, (pad + (i % cols) * w_step, pad + (int)(i // cols) * h_step))
-            img.save(os.path.join(outdir, 'w' + str(i) + '.png'))
+            img.save(os.path.join(outdir, 'w{0}.png'.format(i)))
         all_img.save(os.path.join(outdir, 'filters.png'))
     else:
         for i in six.moves.range(0, out_ch):
             for j in six.moves.range(0, in_ch):
                 filter_data = (((W[i][j] - Wmin) / Wrange) ** gamma) * 255
                 img = Image.fromarray(np.uint8(filter_data))
-                img.save(os.path.join(outdir, 'w' + str(i) + '_' + str(j) + '.png'))
+                img.save(os.path.join(outdir, 'w{0}_{1}.png'.format(i, j)))
 
 parser = argparse.ArgumentParser(
                     description='Learning Flickr Material Database')
