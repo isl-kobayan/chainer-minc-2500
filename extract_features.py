@@ -20,7 +20,6 @@ from chainer import cuda
 import models
 import utils
 import preprocessed_dataset as ppds
-import evaluator_plus
 import datetime
 import time
 import os

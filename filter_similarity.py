@@ -19,7 +19,6 @@ from chainer.training import extensions
 from chainer import cuda
 import models
 import preprocessed_dataset as ppds
-import evaluator_plus
 import datetime
 import time
 import utils
