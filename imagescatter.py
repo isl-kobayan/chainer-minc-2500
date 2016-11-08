@@ -27,7 +27,7 @@ def main(args):
     x_min, x_max = lists[2].min(), lists[2].max()
     y_min, y_max = lists[3].min(), lists[3].max()
 
-    doc = dominate.document(title='Dominate your HTML')
+    doc = dominate.document(title='t-SNE browser ' + args.infile)
 
     with doc.head:
         #link(rel='stylesheet', href='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.11/c3.min.css')
@@ -137,20 +137,9 @@ var chart = c3.generate({
         item: {
             onclick: function (d) {
                 if (event.ctrlKey) {
-                    // console.log('ctrl', d);
                     chart.toggle();
                 }
-                printProperties(chart.data);
-                console.log(chart);
-                console.log(chart.data());
-                console.log(chart.data(d));
-                console.log(chart.tooltip);
-                console.log(chart.data.values(d));
                 chart.toggle(d);
-                //else {
-                //    chart.toggle(d);
-                //}
-                console.log('onclick', d);
             }
         }
     }
