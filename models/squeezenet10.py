@@ -61,7 +61,7 @@ class SqueezeNet10(chainer.Chain):
         h = F.dropout(h, ratio=0.5, train=self.train)
 
         h = F.relu(self.conv10(h))
-        h = F.reshape(F.average_pooling_2d(h, 13), (x.data.shape[0], self.labelsize))
+        h = F.reshape(F.average_pooling_2d(h, h.data.shape[2]), (x.data.shape[0], self.labelsize))
 
         loss = F.softmax_cross_entropy(h, t)
         accuracy = F.accuracy(h, t)
