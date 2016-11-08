@@ -15,6 +15,7 @@ Computer Vision and Pattern Recognition (CVPR), 2015.
 * Pillow
 * matplotlib
 * tqdm
+* dominate
 
 ## Usage
 ### preparation
