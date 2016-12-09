@@ -150,7 +150,24 @@ def get_act_table(path, val_list, acts, rank=10):
     with open(path, 'a') as f:
         f.write(content)
 
+def makeMeanImage(insize, mean_value):
+    mean_image = np.ndarray((3, insize, insize), dtype=np.float32)
+    for i in range(3): mean_image[i] = mean_value[i]
+    return mean_image
 
+def deprocess(in_, mean_image=None):
+    in_ = in_.copy()
+    if mean_image is not None:
+        insize = in_.shape[1]
+        cropwidth = mean_image.shape[1] - insize
+        top = left = cropwidth // 2
+        bottom = insize + top
+        right = insize + left
+        in_ += mean_image[:, top:bottom, left:right]
+    in_ = in_[::-1]
+    in_ = in_.transpose(1, 2, 0)
+    pil_image = Image.fromarray(np.clip(in_, 0, 255).astype(np.uint8))
+    return pil_image
 
 # save confusion matrix as .png image
 def save_confmat_fig0(matrix, savename, labels):

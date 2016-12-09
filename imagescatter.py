@@ -34,6 +34,30 @@ def main(args):
         link(rel='stylesheet', href='c3.css')
         script(type='text/javascript', src='https://cdn.jsdelivr.net/d3js/latest/d3.min.js')
         script(type='text/javascript', src='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.11/c3.min.js')
+        script(type='text/javascript', src='http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js')
+        _css = style(type='text/css')
+        _css += '''
+        #images{
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        #images figure{
+            display: inline-block;
+            margin: 1px;
+            border: 2px solid white;
+            text-align: center;
+            background-color: gray;
+        }
+        #images figure span{
+            display:inline-block;
+            width:10px;
+            height:10px;
+            margin-right:6px;
+        }
+        #images figure:hover{
+            border: 2px solid black;
+        }
+        '''
     with doc:
         '''with div(id='categorylist').add(ul(style="list-style:none;")):
             for i, c in enumerate(categories):
@@ -70,8 +94,9 @@ def main(args):
             _script.add_raw_string('var abc = 0;')
             _script.add_raw_string( # += \
 '''
+<!--
 var imagepath = {};\n''' + append_imagepath_code + '''
-console.log(imagepath['brick']);
+
 function printProperties(obj) {
     var properties = '';
     for (var prop in obj){
@@ -79,6 +104,37 @@ function printProperties(obj) {
     }
     console.log(properties);
 }
+
+$(function() {
+    $('#clearbutton').click(function(e){
+        $('#images figure').remove();
+    });
+    $('#images').on("mouseup", "figure", function(e){
+        if (event.ctrlKey || e.which == 2) {
+            console.log(this);
+            $(this).remove();
+            names = $(this).attr('name').split('-');
+            id = names[0];
+            index = parseInt(names[1]);
+            //console.log(id, index);
+            chart.unselect([id], [index]);
+        }
+    });
+    $('#images').on("mouseover", "figure", function(e){
+        names = $(this).attr('name').split('-');
+        id = names[0];
+        index = parseInt(names[1]);
+        //console.log(id, index);
+        chart.select([id], [index], true);
+    });
+    $('#images').on("mouseout", "figure", function(e){
+        names = $(this).attr('name').split('-');
+        id = names[0];
+        index = parseInt(names[1]);
+        chart.unselect([id], [index], true);
+    });
+});
+
 var chart = c3.generate({
     size: {
         height: 600,
@@ -87,7 +143,21 @@ var chart = c3.generate({
     data: {
         xs: {''' + xs_str + '''},
         columns: [''' + columns_str + '''],
-        type: 'scatter'
+        type: 'scatter',
+        selection: {
+            enabled: true
+        },
+        onclick: function (d, element) {
+            console.log(d, element);
+            chart.unselect([d.id], [d.index]);
+            var fig = $('<figure name="'+ d.id + '-' + d.index +'">');
+            var img = $('<img src="' + imagepath[d.id][d.index] + '" width="200px", height="200px">');
+            var cap = $('<figcaption>' + d.id + '</figcaption>');
+            $('#images').append(fig);
+            fig.append(img);
+            fig.append(cap);
+            cap.css('color', chart.color(d.id));
+        }
     },
     color: {
         pattern: [''' + color_list + ''']
@@ -144,10 +214,11 @@ var chart = c3.generate({
         }
     }
 });
+-->
 ''')
-    with div():
-        attr(cls='body')
-        p('Lorem ipsum..')
+        clearbutton = button(id="clearbutton")
+        clearbutton += "clear"
+        div(id="images")
 
     #print(doc)
     with open(args.out, 'w') as fo:

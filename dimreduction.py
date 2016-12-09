@@ -1,10 +1,7 @@
 #!/usr/bin/env python
-"""Train convnet for MINC-2500 dataset.
+"""dimensionaly reduction
 
-Prerequisite: To run this example, crop the center of ILSVRC2012 training and
-validation images and scale them to 256x256, and make two lists of space-
-separated CSV whose first column is full path to image and second column is
-zero-origin label (this format is same as that used by Caffe's ImageDataLayer).
+Prerequisite: To run this example, execute extrect_features.py.
 
 """
 import argparse
@@ -17,19 +14,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 import utils
 from tqdm import tqdm
+from sklearn.manifold import LocallyLinearEmbedding as LLE
+from sklearn.manifold import MDS
 from sklearn.manifold import TSNE
+from sklearn.manifold import Isomap
+from sklearn.decomposition import PCA
 
 def main(args):
     outputdir = os.path.dirname(args.vectors)
     #winidx_path = os.path.join(outputdir,
     #    'cos-distance_' + os.path.basename(args.weights))
     point_path = os.path.splitext(args.vectors)[0] + \
-        '_tsne_points_it{0}_s{1}.txt'.format(args.iteration, args.samples)
-    winidx_path = os.path.splitext(args.vectors)[0] + '_tsne_winidx.tsv'
-    hist_path = os.path.splitext(args.vectors)[0] + '_tsne_hist.tsv'
-    mode_path = os.path.splitext(args.vectors)[0] + '_tsne_mode.tsv'
+        '_{0}_points_it{1}_s{2}.txt'.format(args.algorithm, args.iteration, args.samples)
     fig_path = os.path.splitext(args.vectors)[0] + \
-        '_tsne_it{0}_s{1}.eps'.format(args.iteration, args.samples)
+        '_{0}_it{1}_s{2}.eps'.format(args.algorithm, args.iteration, args.samples)
 
     print('loading val...')
     val = utils.io.load_image_list(args.val)
@@ -53,13 +51,29 @@ def main(args):
 
     #print(selected_vectors)
     #print(Ys)
-    model = TSNE(n_components=2, n_iter=args.iteration)
+    if args.algorithm == 'tsne':
+        model = TSNE(n_components=2, n_iter=args.iteration, angle=args.angle, metric=args.metric)
+    elif args.algorithm == 'mds':
+        model = MDS(n_components = 2, n_jobs=-1)
+    elif args.algorithm == 'lle':
+        model = LLE(n_components = 2, n_neighbors = args.neighbors, n_jobs=-1)
+    elif args.algorithm == 'isomap':
+        model = Isomap(n_components = 2, n_neighbors = args.neighbors, n_jobs=-1)
+    elif args.algorithm == 'pca':
+        model = PCA(n_components = 2)
     #X = model.fit_transform(v[:23*10])
     print('fitting...')
     X = model.fit_transform(np.array(selected_vectors))
     Y = np.asarray([x[1] for x in val])
     plt.figure(2, figsize=(8, 6))
     plt.clf()
+
+    if args.algorithm == 'pca':
+        pca = PCA(n_components = 100)
+        pca.fit(np.array(selected_vectors))
+        E = pca.explained_variance_ratio_
+        print "explained", E
+        print "cumsum E", np.cumsum(E)
 
     markers=['o', 'x', 'v', '+']
 
@@ -71,8 +85,8 @@ def main(args):
         marker=markers[i % len(markers)],
         s = 10,
         color=plt.cm.jet(float(i) / (C-1)), label=categories[i])
-    plt.xlabel('tsne1')
-    plt.ylabel('tsne2')
+    plt.xlabel(args.algorithm + '1')
+    plt.ylabel(args.algorithm + '2')
     plt.legend(fontsize=10.25, scatterpoints=1, bbox_to_anchor=(1.05, 1.01), loc='upper left')
     plt.subplots_adjust(right=0.7)
     #plt.show()
@@ -90,6 +104,8 @@ parser = argparse.ArgumentParser(
     description='Learning convnet from MINC-2500 dataset')
 parser.add_argument('val', help='Path to image-label file')
 parser.add_argument('vectors', help='Path to feature file (e.g. fc7.npy)')
+parser.add_argument('--algorithm', '-al', default='tsne', choices=('tsne', 'mds', 'lle', 'isomap', 'pca'),
+                    help='method of dimensionaly reduction')
 parser.add_argument('--categories', '-c', default='categories.txt',
                     help='Path to category list file')
 parser.add_argument('--iteration', '-i', type=int, default=200,
@@ -100,10 +116,12 @@ parser.add_argument('--angle', '-a', type=float, default=0.5,
                     help='angle of t-SNE')
 parser.add_argument('--perplexity', '-p', type=int, default=30,
                     help='perplexity of t-SNE')
-parser.add_argument('--mapsize', '-m', type=int, nargs=2, default=[10, 10],
-                    help='Learning iteraion')
 parser.add_argument('--epoch', '-E', type=int, default=0,
                     help='Learning epoch')
+parser.add_argument('--metric', '-m', default='euclidean',
+                    help='distance metric')
+parser.add_argument('--neighbors', '-n', type=int, default=5,
+                    help='n_neighbors param for Isomap')
 parser.add_argument('--initdir',
                     help='specify result dir (e.g. result/vgg16/YYYYMMDD-HHmm_bsX)')
 parser.add_argument('--resume',

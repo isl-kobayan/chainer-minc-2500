@@ -10,5 +10,5 @@ if __name__=='__main__':
   with open('./minc-2500/all_list.txt', 'w') as f:
     for i,x in enumerate(categories):
       for j,y in enumerate(sorted(glob.glob('./minc-2500/images/{}/*'.format(x)))):
-        all_list.append('{}\t{}\n'.format(y, i))
+        all_list.append('images/{}/{}\t{}\n'.format(x, os.path.basename(y), i))
     f.writelines(all_list)

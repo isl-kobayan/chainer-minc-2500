@@ -51,7 +51,7 @@ def main(args):
     if args.initmodel is not None:
         outputdir = os.path.dirname(args.initmodel)
         if args.indices is None:
-            args.indices = os.path.join(outputdir, 'top_' + args.layer + '.txt')
+            args.indices = os.path.join(outputdir, 'features', 'top_' + args.layer + '.txt')
     # Load the datasets and mean file
     mean = None
     if hasattr(model, 'mean_value'):
@@ -91,7 +91,8 @@ def main(args):
     # Copy the chain with shared parameters to flip 'train' flag only in test
     eval_model = model.copy()
     eval_model.train = False
-    val_acquirer = utils.Acquirer(val_iter, eval_model, device=args.gpu)
+    val_acquirer = utils.DeconvAcquirer(val_iter, eval_model, device=args.gpu)
+    val_acquirer.mean = mean
     val_acquirer.layer_rank = eval_model.layer_rank[args.layer]
     val_acquirer.layer_name = args.layer
     val_acquirer.operation = args.operation

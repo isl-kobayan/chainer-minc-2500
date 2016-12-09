@@ -23,7 +23,6 @@ import preprocessed_dataset as ppds
 import datetime
 import time
 import os
-import extractor
 
 image_size = 362
 
