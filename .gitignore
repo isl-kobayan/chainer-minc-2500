@@ -3,4 +3,5 @@ minc-2500/
 result/
 *~
 *.caffemodel
+*.pkl
 .ipynb_checkpoints/
