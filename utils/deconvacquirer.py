@@ -19,6 +19,7 @@ import os
 import csv
 import chainer.functions as F
 import ioutil
+import variableutil as Vutil
 import math
 
 class DeconvAcquirer(extensions.Evaluator):
@@ -30,6 +31,9 @@ class DeconvAcquirer(extensions.Evaluator):
     n_features = None
     mean = None
     switch_1stlayer = False
+    guided = False
+    fixed_RMS = -1#0.020
+
 
 
     '''trigger = 1, 'epoch'
@@ -157,9 +161,18 @@ class DeconvAcquirer(extensions.Evaluator):
             bounds.append(self.get_patch_bounds(variable, x, y))
         return bounds
 
+    def get_RMS(x):
+        xp = cuda.get_array_module(x)
+
+        if xp == cupy:
+            rms = cupy.sqrt(cupy.sum(x**2) / np.product(x.shape))
+        else:
+            rms = np.linalg.norm(x) ** 2 / np.product(x.shape)
+
+        return rms
+
     def deconv(self, variable):
         v = variable
-        fixed_RMS = 0.020
         if(v.creator is not None):
             bottom_blob = v.creator.inputs[0]
             print(v.creator.label, v.rank)
@@ -169,16 +182,15 @@ class DeconvAcquirer(extensions.Evaluator):
                 convW = v.creator.inputs[1].data
                 xp = cuda.get_array_module(convW)
 
-                if xp == cupy:
-                    rms = cupy.sqrt(cupy.sum(convW ** 2) / np.product(convW.shape))
-                    #rms = cupy.sqrt(cupy.sum(convW ** 2, axis=(2, 3)) / np.product(convW.shape[2:]))
+                if self.fixed_RMS > 0:
+                    rms = get_RMS(convW)
+                    scale = self.fixed_RMS / rms
+                    print(rms, scale)
                 else:
-                    rms = np.linalg.norm(convW) ** 2 / np.product(convW.shape)
-                    #rms = np.linalg.norm(convW, axis=(2, 3)) ** 2 / np.product(convW.shape[2:])
-                scale = fixed_RMS / rms
+                    scale = 1
                 #if v.rank != 1:
                 #    scale = 1
-                print(rms, scale)
+
                 #scale = 1
                 #scale = min(scale, 1.5)
                 convW = convW * scale
@@ -198,10 +210,13 @@ class DeconvAcquirer(extensions.Evaluator):
                 # Deconvolution （転置畳み込み）
                 deconv_data = F.deconvolution_2d(
                     in_data, convW, stride=(sy, sx), pad=(ph, pw), outsize=outsize)
-                # そもそも畳み込み前の値が0以下だったら伝搬させない
-                switch = bottom_blob.data > 0
-                if v.rank > 1 or switch_1stlayer:
-                    deconv_data.data *= switch
+
+                # guided backpropagation
+                if self.guided:
+                    # そもそも畳み込み前の値が0以下だったら伝搬させない
+                    switch = bottom_blob.data > 0
+                    if v.rank > 1 or self.switch_1stlayer:
+                        deconv_data.data *= switch
 
                 bottom_blob.data = deconv_data.data
                 self.deconv(bottom_blob)
@@ -228,8 +243,9 @@ class DeconvAcquirer(extensions.Evaluator):
                 ## (2) 最大値と値が一致するところだけ1, それ以外は0 (Max Location Switches)
                 pool_switch = unpooled_max_map.data == bottom_blob.data
                 ## (3) そもそも最大値が0以下だったら伝搬させない
-                lt0_switch = bottom_blob.data > 0
-                pool_switch *= lt0_switch
+                if self.guided:
+                    lt0_switch = bottom_blob.data > 0
+                    pool_switch *= lt0_switch
 
                 # Max Location Switchesが1のところだけUnPoolingの結果を伝搬
                 bottom_blob.data = unpooled_data.data * pool_switch
@@ -238,14 +254,13 @@ class DeconvAcquirer(extensions.Evaluator):
     def get_deconv(self, loss, rank, indices):
         variable = self.get_variable(loss, rank)
         # 1. 最も活性した場所以外を0にする
-        maxinfo = self.get_max_info(loss, rank, indices)
         #maxbounds = self.get_max_patch_bounds(loss, rank, indices)
+        maxinfo = self.get_max_info(loss, rank, indices)
         variable.data.fill(0)
         for i, (c, info) in enumerate(zip(indices, maxinfo)):
             variable.data[i, c, info[1], info[0]] = info[2]
 
         # 2. 入力層まで逆操作を繰り返す
-        #variable.backward(retain_grad=True)
         first_layer = self.get_variable(loss, 1)
         data_layer = first_layer.creator.inputs[0]
 
@@ -263,12 +278,8 @@ class DeconvAcquirer(extensions.Evaluator):
         #print(rms, scale)
         #data_layer.data *= scale
 
-        #print(dir(first_layer))
-        #print(first_layer.inputs)
-        #print('before', data_layer.data[0])
         self.deconv(variable)
-        #first_layer = self.get_variable(loss, 1)
-        #print('after', data_layer.data[0])
+
         return data_layer.data
 
 
