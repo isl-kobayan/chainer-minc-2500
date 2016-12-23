@@ -4,4 +4,8 @@ result/
 *~
 *.caffemodel
 *.pkl
+*.html
+*.png
+*.npy
+*.ipynb
 .ipynb_checkpoints/

@@ -14,6 +14,8 @@ from chainer import cuda
 import numpy as np
 import cupy
 import os
+import ioutil
+import variableutil as Vutil
 
 class Extractor(extensions.Evaluator):
     lastname = 'validation/main/loss'
@@ -42,67 +44,6 @@ class Extractor(extensions.Evaluator):
         self.eval_hook = eval_hook
         self.eval_func = eval_func'''
 
-    def printloss(self, loss):
-        v = loss
-        while (v.creator is not None):
-            print(v.rank, v.creator.label)
-            v = v.creator.inputs[0]
-
-    def getVariableFromLoss(self, loss, rank):
-        if loss is None:
-            return None
-
-        def printl(v):
-            if v.creator is not None:
-                print(v.rank, v.creator.label)
-                printl(v.creator.inputs[0])
-                if(v.creator.label == '_ + _'):
-                    printl(v.creator.inputs[1])
-                #elif(v.creator.label == 'Concat'):
-                #    for l in v.creator.inputs:
-                #        if (v.rank + 1 != l.rank) : printl(l)
-        #printl(self.loss3)
-        v = loss
-        while (v.creator is not None):
-            if v.rank == rank:
-                return v.creator.outputs[0]()
-            v = v.creator.inputs[0]
-        return None
-
-    def get_variable(self, loss, rank):
-        v = loss
-        while (v.creator is not None):
-            if v.rank == rank:
-                return v.creator.outputs[0]()
-            v = v.creator.inputs[0]
-        return None
-
-    def get_features(self, loss, rank, operation=None):
-        variable = self.get_variable(loss, rank)
-        ax = (2,3) if len(variable.data.shape) == 4 else 1
-        if operation == 'max':
-            return variable.data.max(axis=ax)
-        elif operation == 'argmax':
-            return variable.data.argmax(axis=ax)
-        elif operation == 'mean':
-            return variable.data.mean(axis=ax)
-        else:
-            return variable.data
-
-    def savetxt(self, fname, X, fmt='%.18e', delimiter='', newline='\n', header='', footer='', comments='#'):
-        xp = cuda.get_array_module(X)
-        if xp is np:
-            np.savetxt(fname, X, fmt, delimiter, newline, header, footer, comments)
-        else:
-            np.savetxt(fname, X.get(), fmt, delimiter, newline, header, footer, comments)
-
-    def get_argmax_N(self, X, N):
-        xp = cuda.get_array_module(X)
-        if xp is np:
-            return np.argsort(X, axis=0)[::-1][:N]
-        else:
-            return np.argsort(X.get(), axis=0)[::-1][:N]
-
     def __call__(self, trainer):
         """override method of extensions.Evaluator."""
         # set up a reporter
@@ -120,7 +61,7 @@ class Extractor(extensions.Evaluator):
             result, features = self.evaluate()
             if not os.path.exists(trainer.out):
                 os.makedirs(trainer.out)
-            #self.savetxt(os.path.join(trainer.out, self.layer_name + '.txt'),
+            #ioutil.savetxt(os.path.join(trainer.out, self.layer_name + '.txt'),
             #                features, delimiter='\t')
             #cupy.savez(os.path.join(trainer.out, self.layer_name + '.npz'),
             #                **{self.layer_name: features})
@@ -129,9 +70,9 @@ class Extractor(extensions.Evaluator):
                         features)
 
             if self.top is not None:
-                top_N_args = self.get_argmax_N(features, self.top)
+                top_N_args = Vutil.get_argmax_N(features, self.top)
                 #print(top_N_args)
-                np.savetxt(os.path.join(trainer.out,
+                ioutil.savetxt(os.path.join(trainer.out,
                             'top_' + self.layer_name + '.txt'), top_N_args,
                             fmt='%d', delimiter='\t')
                 #np.savez(os.path.join(trainer.out,
@@ -169,13 +110,17 @@ class Extractor(extensions.Evaluator):
                     in_var = variable.Variable(in_arrays, volatile='off')
                     eval_func(in_var)
 
+            # deconv対象の層のVariableを取得
+            layer_variable = Vutil.get_variable(
+                observation[self.lastname], self.layer_rank)
+
             if features is None:
-                features = self.get_features(
-                    observation[self.lastname], self.layer_rank, self.operation)
+                features = Vutil.get_features(
+                    layer_variable, self.operation)
             else:
                 xp = cuda.get_array_module(features)
-                features = xp.vstack((features, self.get_features(
-                    observation[self.lastname], self.layer_rank, self.operation)))
+                features = xp.vstack((features, Vutil.get_features(
+                    layer_variable, self.operation)))
             #self.add_to_confmat(self.confmat, in_vars[1].data, self.getpred(observation[self.lastname]))
             summary.add(observation)
         #print(self.confmat)
