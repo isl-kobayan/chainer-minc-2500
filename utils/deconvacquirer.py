@@ -31,8 +31,8 @@ class DeconvAcquirer(extensions.Evaluator):
     n_features = None
     mean = None
     switch_1stlayer = False
-    guided = False
-    fixed_RMS = -1#0.020
+    guided = True
+    fixed_RMS = 0.020
 
 
 
@@ -55,122 +55,6 @@ class DeconvAcquirer(extensions.Evaluator):
         self.eval_hook = eval_hook
         self.eval_func = eval_func'''
 
-    def printloss(self, loss):
-        v = loss
-        while (v.creator is not None):
-            print(v.rank, v.creator.label)
-            v = v.creator.inputs[0]
-
-    def getVariableFromLoss(self, loss, rank):
-        if loss is None:
-            return None
-
-        def printl(v):
-            if v.creator is not None:
-                print(v.rank, v.creator.label)
-                printl(v.creator.inputs[0])
-                if(v.creator.label == '_ + _'):
-                    printl(v.creator.inputs[1])
-                #elif(v.creator.label == 'Concat'):
-                #    for l in v.creator.inputs:
-                #        if (v.rank + 1 != l.rank) : printl(l)
-        #printl(self.loss3)
-        v = loss
-        while (v.creator is not None):
-            if v.rank == rank:
-                return v.creator.outputs[0]()
-            v = v.creator.inputs[0]
-        return None
-
-    def get_variable(self, loss, rank):
-        v = loss
-        while (v.creator is not None):
-            if v.rank == rank:
-                return v.creator.outputs[0]()
-            v = v.creator.inputs[0]
-        return None
-
-    def get_patch_bounds(self, variable, x, y):
-        left = x; right = x
-        top = y; bottom = y
-        v = variable
-        while (v.creator is not None):
-            mapw = v.creator.inputs[0].data.shape[3]
-            maph = v.creator.inputs[0].data.shape[2]
-            if (v.creator.label == 'Convolution2DFunction'):
-                kw = v.creator.inputs[1].data.shape[3]
-                kh = v.creator.inputs[1].data.shape[2]
-                sx = v.creator.sx; sy = v.creator.sy
-                pw = v.creator.pw; ph = v.creator.ph
-            elif (v.creator.label == 'MaxPooling2D'):
-                kw = v.creator.kw; kh = v.creator.kh
-                sx = v.creator.sx; sy = v.creator.sy
-                pw = v.creator.pw; ph = v.creator.ph
-            else:
-                kw = 1; kh = 1; sx = 1; sy = 1; pw = 0; ph = 0
-
-            left = sx * left - pw
-            right = sx * right - pw + kw - 1
-            top = sy * top - ph
-            bottom = sy * bottom - ph + kh - 1
-            if left < 0: left = 0
-            if right >= mapw: right = mapw - 1
-            if top < 0: top = 0
-            if bottom >= maph: bottom = maph - 1
-
-            v = v.creator.inputs[0]
-        return (left, right + 1, top, bottom + 1)
-
-    def get_max_locs(self, loss, rank, indices):
-        variable = self.get_variable(loss, rank)
-        ax = (2,3) if len(variable.data.shape) == 4 else 1
-        w = variable.data.shape[3]
-        argmax = variable.data.argmax(axis=ax)
-        locs=[]
-        for (am, i) in zip(argmax, indices):
-            loc = int(am[i])
-            x = loc % w
-            y = loc // w
-            locs.append((x, y))
-        return locs
-
-    def get_max_info(self, loss, rank, indices):
-        variable = self.get_variable(loss, rank)
-        ax = (2,3) if len(variable.data.shape) == 4 else 1
-        w = variable.data.shape[3]
-        argmax = variable.data.argmax(axis=ax)
-        maxval = variable.data.max(axis=ax)
-        info=[]
-        for (am, val, i) in zip(argmax, maxval, indices):
-            loc = int(am[i])
-            x = loc % w
-            y = loc // w
-            info.append((x, y, val[i]))
-        return info
-
-    def get_max_patch_bounds(self, loss, rank, indices):
-        variable = self.get_variable(loss, rank)
-        ax = (2,3) if len(variable.data.shape) == 4 else 1
-        w = variable.data.shape[3]
-        argmax = variable.data.argmax(axis=ax)
-        bounds=[]
-        for (am, i) in zip(argmax, indices):
-            loc = int(am[i])
-            x = loc % w
-            y = loc // w
-            bounds.append(self.get_patch_bounds(variable, x, y))
-        return bounds
-
-    def get_RMS(x):
-        xp = cuda.get_array_module(x)
-
-        if xp == cupy:
-            rms = cupy.sqrt(cupy.sum(x**2) / np.product(x.shape))
-        else:
-            rms = np.linalg.norm(x) ** 2 / np.product(x.shape)
-
-        return rms
-
     def deconv(self, variable):
         v = variable
         if(v.creator is not None):
@@ -183,7 +67,7 @@ class DeconvAcquirer(extensions.Evaluator):
                 xp = cuda.get_array_module(convW)
 
                 if self.fixed_RMS > 0:
-                    rms = get_RMS(convW)
+                    rms = Vutil.get_RMS(convW)
                     scale = self.fixed_RMS / rms
                     print(rms, scale)
                 else:
@@ -251,19 +135,25 @@ class DeconvAcquirer(extensions.Evaluator):
                 bottom_blob.data = unpooled_data.data * pool_switch
                 self.deconv(bottom_blob)
 
-    def get_deconv(self, loss, rank, indices):
-        variable = self.get_variable(loss, rank)
+    def get_deconv(self, variable, indices):
         # 1. 最も活性した場所以外を0にする
         #maxbounds = self.get_max_patch_bounds(loss, rank, indices)
-        maxinfo = self.get_max_info(loss, rank, indices)
-        variable.data.fill(0)
-        for i, (c, info) in enumerate(zip(indices, maxinfo)):
-            variable.data[i, c, info[1], info[0]] = info[2]
+        isfc = Vutil.has_fc_layer(variable)
+        # 全結合層の可視化の場合
+        if isfc:
+            values = get_fc_info(variable, indices)
+            variable.data.fill(0)
+            for i, (j, v) in enumerate(zip(indices, values)):
+                variable.data[i, j] = v
+        # 畳み込み層やプーリング層などの可視化の場合
+        else:
+            maxinfo = Vutil.get_max_info(variable, indices)
+            variable.data.fill(0)
+            for i, (c, info) in enumerate(zip(indices, maxinfo)):
+                variable.data[i, c, info[1], info[0]] = info[2]
 
         # 2. 入力層まで逆操作を繰り返す
-        first_layer = self.get_variable(loss, 1)
-        data_layer = first_layer.creator.inputs[0]
-
+        data_layer = Vutil.get_data_layer(variable)
         xp = cuda.get_array_module(data_layer.data)
 
         fixed_RMS = 300
@@ -281,40 +171,6 @@ class DeconvAcquirer(extensions.Evaluator):
         self.deconv(variable)
 
         return data_layer.data
-
-
-    def get_features(self, loss, rank, operation=None):
-        variable = self.get_variable(loss, rank)
-        if operation is None:
-            return variable.data
-        else:
-            ax = (2,3) if len(variable.data.shape) == 4 else 1
-            if operation == 'max':
-                return variable.data.max(axis=ax)
-            elif operation == 'argmax':
-                return variable.data.argmax(axis=ax)
-            elif operation == 'mean':
-                return variable.data.mean(axis=ax)
-
-    def savetxt(self, fname, X, fmt='%.18e', delimiter='', newline='\n', header='', footer='', comments='#'):
-        xp = cuda.get_array_module(X)
-        if xp is np:
-            np.savetxt(fname, X, fmt, delimiter, newline, header, footer, comments)
-        else:
-            np.savetxt(fname, X.get(), fmt, delimiter, newline, header, footer, comments)
-
-    def save_tuple_list(self, fname, data, delimiter='\t'):
-        with open(fname,'w') as out:
-            csv_out=csv.writer(out, delimiter=delimiter)
-            for row in data:
-                csv_out.writerow(row)
-
-    def get_argmax_N(self, X, N):
-        xp = cuda.get_array_module(X)
-        if xp is np:
-            return np.argsort(X, axis=0)[::-1][:N]
-        else:
-            return np.argsort(X.get(), axis=0)[::-1][:N]
 
     def __call__(self, trainer):
         """override method of extensions.Evaluator."""
@@ -337,7 +193,7 @@ class DeconvAcquirer(extensions.Evaluator):
             if not os.path.exists(trainer.out):
                 os.makedirs(trainer.out)
             #print(bounds)
-            #self.savetxt(os.path.join(trainer.out, self.layer_name + '.txt'),
+            #ioutil.savetxt(os.path.join(trainer.out, self.layer_name + '.txt'),
             #                features, delimiter='\t')
             #cupy.savez(os.path.join(trainer.out, self.layer_name + '.npz'),
             #                **{self.layer_name: features})
@@ -381,16 +237,22 @@ class DeconvAcquirer(extensions.Evaluator):
 
             indices = np.arange(filter_idx, filter_idx + len(batch)) % self.n_features
             #print('x', in_vars[0].data[0])
-            bounds = self.get_max_patch_bounds(
-                observation[self.lastname], self.layer_rank, indices)
+            # deconv対象の層のVariableを取得
+            layer_variable = Vutil.get_variable(
+                observation[self.lastname], self.layer_rank)
+            # 最大値の位置の計算に必要な入力層の領域を取得
+            bounds = Vutil.get_max_bounds(layer_variable, indices)
+            # deconvを実行
             deconv_data = self.get_deconv(
-                observation[self.lastname], self.layer_rank, indices)
+                layer_variable, indices)
 
             topk = np.arange(n_processed, n_processed + len(batch)) // self.n_features
 
             for k, f, d, b in zip(topk, indices, deconv_data, bounds):
                 #print(dir(d))
+                # deconvされた入力層に平均画像を足して画像化
                 img = ioutil.deprocess(d.get(), self.mean)
+                # 最大値の位置の計算に必要な入力層の領域だけクロッピングして保存
                 img.crop((b[0], b[2], b[1], b[3])).save(
                 os.path.join(self.deconv_image_dir,
                     "{0:0>4}_{1:0>2}.png".format(f, k)))
@@ -401,15 +263,6 @@ class DeconvAcquirer(extensions.Evaluator):
                 observation[self.lastname], self.layer_rank, indices))'''
             filter_idx = (filter_idx + len(batch)) % self.n_features
             n_processed += len(batch)
-            '''if max_loc is None:
-                max_loc = self.get_features(
-                    observation[self.lastname], self.layer_rank, 'argmax')
-                #print(batch)
-                print(max_loc)
-            else:
-                xp = cuda.get_array_module(max_loc)
-                max_loc = xp.vstack((max_loc, self.get_features(
-                    observation[self.lastname], self.layer_rank, 'argmax')))'''
 
             #self.add_to_confmat(self.confmat, in_vars[1].data, self.getpred(observation[self.lastname]))
             summary.add(observation)

@@ -15,6 +15,8 @@ import numpy as np
 import cupy
 import os
 import csv
+import ioutil
+import variableutil as Vutil
 
 class Acquirer(extensions.Evaluator):
     lastname = 'validation/main/loss'
@@ -43,111 +45,6 @@ class Acquirer(extensions.Evaluator):
         self.eval_hook = eval_hook
         self.eval_func = eval_func'''
 
-    def printloss(self, loss):
-        v = loss
-        while (v.creator is not None):
-            print(v.rank, v.creator.label)
-            v = v.creator.inputs[0]
-
-    def getVariableFromLoss(self, loss, rank):
-        if loss is None:
-            return None
-
-        def printl(v):
-            if v.creator is not None:
-                print(v.rank, v.creator.label)
-                printl(v.creator.inputs[0])
-                if(v.creator.label == '_ + _'):
-                    printl(v.creator.inputs[1])
-                #elif(v.creator.label == 'Concat'):
-                #    for l in v.creator.inputs:
-                #        if (v.rank + 1 != l.rank) : printl(l)
-        #printl(self.loss3)
-        v = loss
-        while (v.creator is not None):
-            if v.rank == rank:
-                return v.creator.outputs[0]()
-            v = v.creator.inputs[0]
-        return None
-
-    def get_variable(self, loss, rank):
-        v = loss
-        while (v.creator is not None):
-            if v.rank == rank:
-                return v.creator.outputs[0]()
-            v = v.creator.inputs[0]
-        return None
-
-    def get_patch_bounds(self, variable, x, y):
-        left = x; right = x
-        top = y; bottom = y
-        v = variable
-        while (v.creator is not None):
-            mapw = v.creator.inputs[0].data.shape[3]
-            maph = v.creator.inputs[0].data.shape[2]
-            if (v.creator.label == 'Convolution2DFunction'):
-                kw = v.creator.inputs[1].data.shape[3]
-                kh = v.creator.inputs[1].data.shape[2]
-                sx = v.creator.sx; sy = v.creator.sy
-                pw = v.creator.pw; ph = v.creator.ph
-            elif (v.creator.label == 'MaxPooling2D'):
-                kw = v.creator.kw; kh = v.creator.kh
-                sx = v.creator.sx; sy = v.creator.sy
-                pw = v.creator.pw; ph = v.creator.ph
-            else:
-                kw = 1; kh = 1; sx = 1; sy = 1; pw = 0; ph = 0
-
-            left = sx * left - pw
-            right = sx * right - pw + kw - 1
-            top = sy * top - ph
-            bottom = sy * bottom - ph + kh - 1
-            if left < 0: left = 0
-            if right >= mapw: right = mapw - 1
-            if top < 0: top = 0
-            if bottom >= maph: bottom = maph - 1
-
-            v = v.creator.inputs[0]
-        return (left, right + 1, top, bottom + 1)
-
-    def get_max_locs(self, loss, rank, indices):
-        variable = self.get_variable(loss, rank)
-        ax = (2,3) if len(variable.data.shape) == 4 else 1
-        w = variable.data.shape[3]
-        argmax = variable.data.argmax(axis=ax)
-        locs=[]
-        for (am, i) in zip(argmax, indices):
-            loc = int(am[i])
-            x = loc % w
-            y = loc // w
-            locs.append((x, y))
-        return locs
-
-    def get_max_patch_bounds(self, loss, rank, indices):
-        variable = self.get_variable(loss, rank)
-        ax = (2,3) if len(variable.data.shape) == 4 else 1
-        w = variable.data.shape[3]
-        argmax = variable.data.argmax(axis=ax)
-        bounds=[]
-        for (am, i) in zip(argmax, indices):
-            loc = int(am[i])
-            x = loc % w
-            y = loc // w
-            bounds.append(self.get_patch_bounds(variable, x, y))
-        return bounds
-
-    def get_features(self, loss, rank, operation=None):
-        variable = self.get_variable(loss, rank)
-        if operation is None:
-            return variable.data
-        else:
-            ax = (2,3) if len(variable.data.shape) == 4 else 1
-            if operation == 'max':
-                return variable.data.max(axis=ax)
-            elif operation == 'argmax':
-                return variable.data.argmax(axis=ax)
-            elif operation == 'mean':
-                return variable.data.mean(axis=ax)
-
     def savetxt(self, fname, X, fmt='%.18e', delimiter='', newline='\n', header='', footer='', comments='#'):
         xp = cuda.get_array_module(X)
         if xp is np:
@@ -160,13 +57,6 @@ class Acquirer(extensions.Evaluator):
             csv_out=csv.writer(out, delimiter=delimiter)
             for row in data:
                 csv_out.writerow(row)
-
-    def get_argmax_N(self, X, N):
-        xp = cuda.get_array_module(X)
-        if xp is np:
-            return np.argsort(X, axis=0)[::-1][:N]
-        else:
-            return np.argsort(X.get(), axis=0)[::-1][:N]
 
     def __call__(self, trainer):
         """override method of extensions.Evaluator."""
@@ -228,21 +118,14 @@ class Acquirer(extensions.Evaluator):
                     eval_func(in_var)
 
             indices = np.arange(filter_idx, filter_idx + len(batch)) % self.n_features
-            
-            max_locs.extend(self.get_max_locs(
-                observation[self.lastname], self.layer_rank, indices))
-            bounds.extend(self.get_max_patch_bounds(
-                observation[self.lastname], self.layer_rank, indices))
+
+            # deconv対象の層のVariableを取得
+            layer_variable = Vutil.get_variable(
+                observation[self.lastname], self.layer_rank)
+            max_locs.extend(Vutil.get_max_locs(layer_variable, indices))
+            bounds.extend(Vutil.get_max_bounds(layer_variable, indices))
+
             filter_idx = (filter_idx + len(batch)) % self.n_features
-            '''if max_loc is None:
-                max_loc = self.get_features(
-                    observation[self.lastname], self.layer_rank, 'argmax')
-                #print(batch)
-                print(max_loc)
-            else:
-                xp = cuda.get_array_module(max_loc)
-                max_loc = xp.vstack((max_loc, self.get_features(
-                    observation[self.lastname], self.layer_rank, 'argmax')))'''
 
             #self.add_to_confmat(self.confmat, in_vars[1].data, self.getpred(observation[self.lastname]))
             summary.add(observation)

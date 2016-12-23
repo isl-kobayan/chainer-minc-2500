@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from PIL import Image
+from chainer import cuda
 import numpy as np
 import random
 import os
@@ -306,3 +307,16 @@ def save_pca_scatter_fig(data, savename, labels,
     plt.legend(scatterpoints=1)
     plt.savefig(savename, format=saveFormat)
     plt.close()
+
+def savetxt(self, fname, X, fmt='%.18e', delimiter='', newline='\n', header='', footer='', comments='#'):
+    xp = cuda.get_array_module(X)
+    if xp is np:
+        np.savetxt(fname, X, fmt, delimiter, newline, header, footer, comments)
+    else:
+        np.savetxt(fname, X.get(), fmt, delimiter, newline, header, footer, comments)
+
+def save_tuple_list(self, fname, data, delimiter='\t'):
+    with open(fname,'w') as out:
+        csv_out = csv.writer(out, delimiter=delimiter)
+        for row in data:
+            csv_out.writerow(row)

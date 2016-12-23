@@ -51,7 +51,7 @@ def main(args):
     if args.initmodel is not None:
         outputdir = os.path.dirname(args.initmodel)
         if args.indices is None:
-            args.indices = os.path.join(outputdir, 'top_' + args.layer + '.txt')
+            args.indices = os.path.join(outputdir, 'features', 'top_' + args.layer + '.txt')
     # Load the datasets and mean file
     mean = None
     if hasattr(model, 'mean_value'):

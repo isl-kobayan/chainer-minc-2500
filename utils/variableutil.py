@@ -4,6 +4,7 @@ import six
 
 from chainer import cuda
 import numpy as np
+import cupy
 '''
 import chainer
 from chainer.training import extensions
@@ -14,7 +15,7 @@ from chainer import reporter as reporter_module
 from chainer.training import extension
 from chainer import variable
 
-import cupy
+
 import os
 import csv
 import chainer.functions as F
@@ -134,7 +135,7 @@ def get_max_locs(variable, channels):
         list(tuple(int, int)): 最大値の位置. list[i] = (x, y)
     """
 
-    assert len(variable.data.shape) == 4, 'variable should be 4th dimension.'
+    assert len(variable.data.shape) == 4, 'variable should be 4d array.'
 
     b, c, h, w = variable.data.shape
     argmax = variable.data.reshape(b, c, -1).argmax(axis=2)
@@ -161,7 +162,7 @@ def get_max_info(variable, channels):
         list(tuple(int, int, int)): 最大値とその位置。list[i] = (x, y, maxval)
     """
 
-    assert len(variable.data.shape) == 4, 'variable should be 4th dimension.'
+    assert len(variable.data.shape) == 4, 'variable should be 4d array.'
 
     b, c, h, w = variable.data.shape
     argmax = variable.data.reshape(b, c, -1).argmax(axis=2)
@@ -172,6 +173,27 @@ def get_max_info(variable, channels):
         x = loc % w
         y = loc // w
         info.append((x, y, val[i]))
+    return info
+
+def get_fc_info(variable, indices):
+    """ 全結合層の指定された位置のニューロンの値を取得する
+
+    全結合層のindicesで指定された位置のニューロンの値を取得します。
+    i番目のデータから、indices[i]番目のニューロンの値を取得します。
+
+    Args:
+        variable (~chainer.Variable): 全結合層 (chainer.Variable)
+        indices list(int): 最大値の位置を取得するチャンネル
+
+    Returns:
+        list(int): ニューロンの値
+    """
+
+    assert len(variable.data.shape) == 2, 'variable should be 2d array.'
+
+    info=[]
+    for d, i in zip(variable.data, indices):
+        info.append(d[i])
     return info
 
 def get_max_bounds(variable, channels):
@@ -218,3 +240,29 @@ def has_fc_layer(variable):
         v = v.creator.inputs[0]
 
     return False
+
+def get_RMS(x):
+    """ RMSを計算する
+
+    RMS (Root Mean Square) を計算します。
+    RMS = \sqrt(1/N \sum _(a \in x) a^2)
+
+    Args:
+        x (numpy.ndarray or cupy.ndarray): 多次元配列
+
+    Returns:
+        rms: RMS
+    """
+    xp = cuda.get_array_module(x)
+    if xp == cupy:
+        rms = cupy.sqrt(cupy.sum(x**2) / np.product(x.shape))
+    else:
+        rms = np.linalg.norm(x) ** 2 / np.product(x.shape)
+    return rms
+
+def get_argmax_N(self, X, N):
+    xp = cuda.get_array_module(X)
+    if xp is np:
+        return np.argsort(X, axis=0)[::-1][:N]
+    else:
+        return np.argsort(X.get(), axis=0)[::-1][:N]
