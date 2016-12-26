@@ -96,6 +96,7 @@ def main(args):
     val_acquirer.layer_rank = eval_model.layer_rank[args.layer]
     val_acquirer.layer_name = args.layer
     val_acquirer.operation = args.operation
+    val_acquirer.fixed_RMS = args.rms
     val_acquirer.top = args.top
     val_acquirer.n_features = val.cols
     if 'googlenet' in args.arch:
@@ -171,6 +172,8 @@ parser.add_argument('--cols', type=int, default=1,
                     help='columns')
 parser.add_argument('--gamma', '-G', type=float, default=1.0,
                     help='gamma')
+parser.add_argument('--rms', type=float, default=0.02,
+                    help='rms')
 parser.add_argument('--top', '-t', type=int, default=10,
                     help='gather top n activated images')
 parser.add_argument('--gpu', '-g', type=int, default=-1,

@@ -11,6 +11,8 @@ import matplotlib
 #matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+""" 入出力に関する関数群 """
+
 def read_image(path, insize, mean_image=None, center=False, flip=False):
     u"""Image reading function.
     This function reads image for Convolutional Neural Networls.

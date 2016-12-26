@@ -32,7 +32,9 @@ class DeconvAcquirer(extensions.Evaluator):
     mean = None
     switch_1stlayer = False
     guided = True
+    ignore_bias = True
     fixed_RMS = 0.020
+    rms_axis = 0
 
 
 
@@ -57,83 +59,29 @@ class DeconvAcquirer(extensions.Evaluator):
 
     def deconv(self, variable):
         v = variable
-        if(v.creator is not None):
+        # 今の層から入力層に辿り着くまで繰り返す
+        while (v.creator is not None):
             bottom_blob = v.creator.inputs[0]
             print(v.creator.label, v.rank)
-            # Convolution -> Deconvolutionに変換
+            # Convolution -> Deconvolution
             if (v.creator.label == 'Convolution2DFunction'):
-                # 畳み込みフィルタをRMSがfixed_RMSになるように正規化
-                convW = v.creator.inputs[1].data
-                xp = cuda.get_array_module(convW)
-
-                if self.fixed_RMS > 0:
-                    rms = Vutil.get_RMS(convW)
-                    scale = self.fixed_RMS / rms
-                    print(rms, scale)
-                else:
-                    scale = 1
-                #if v.rank != 1:
-                #    scale = 1
-
-                #scale = 1
-                #scale = min(scale, 1.5)
-                convW = convW * scale
-
-                # もし畳み込み層にバイアスがある場合、先にバイアス分を引いておく
-                if len(v.creator.inputs) == 3:
-                    in_data = F.bias(v, -v.creator.inputs[2] * scale)
-                else:
-                    in_data = v
-
-                in_cn, out_cn = convW.shape[0], convW.shape[1] # in/out channels
-                kh, kw = convW.shape[2], convW.shape[3] # kernel size
-                sx, sy = v.creator.sx, v.creator.sy # stride
-                pw, ph = v.creator.pw, v.creator.ph # padding
-                outsize = (bottom_blob.data.shape[2], bottom_blob.data.shape[3])
-
-                # Deconvolution （転置畳み込み）
-                deconv_data = F.deconvolution_2d(
-                    in_data, convW, stride=(sy, sx), pad=(ph, pw), outsize=outsize)
-
-                # guided backpropagation
-                if self.guided:
-                    # そもそも畳み込み前の値が0以下だったら伝搬させない
-                    switch = bottom_blob.data > 0
-                    if v.rank > 1 or self.switch_1stlayer:
-                        deconv_data.data *= switch
-
-                bottom_blob.data = deconv_data.data
-                self.deconv(bottom_blob)
+                bottom_blob.data = Vutil.invert_convolution(v,
+                    self.fixed_RMS, self.guided, self.ignore_bias)
             # relu -> relu
             elif (v.creator.label == 'ReLU'):
-                bottom_blob.data = F.relu(v).data
-                self.deconv(bottom_blob)
+                bottom_blob.data = Vutil.invert_relu(v)
             # Pooling -> UnPooling
             elif (v.creator.label == 'MaxPooling2D'):
-                kw, kh = v.creator.kw, v.creator.kh
-                sx, sy = v.creator.sx, v.creator.sy
-                pw, ph = v.creator.pw, v.creator.ph
-                outsize = (bottom_blob.data.shape[2], bottom_blob.data.shape[3])
-
-                # UnPooling
-                unpooled_data = F.unpooling_2d(
-                    v, (kh, kw), stride=(sy, sx), pad=(ph, pw), outsize=outsize)
-
-                # Max Location Switchesの作成（Maxの位置だけ1, それ以外は0）
-                ## (1) Max pooling後のマップをNearest neighborでpooling前のサイズに拡大
-                unpooled_max_map = F.unpooling_2d(
-                    F.max_pooling_2d(bottom_blob, (kh, kw), stride=(sy, sx), pad=(ph, pw)),
-                    (kh, kw), stride=(sy, sx), pad=(ph, pw), outsize=outsize)
-                ## (2) 最大値と値が一致するところだけ1, それ以外は0 (Max Location Switches)
-                pool_switch = unpooled_max_map.data == bottom_blob.data
-                ## (3) そもそも最大値が0以下だったら伝搬させない
-                if self.guided:
-                    lt0_switch = bottom_blob.data > 0
-                    pool_switch *= lt0_switch
-
-                # Max Location Switchesが1のところだけUnPoolingの結果を伝搬
-                bottom_blob.data = unpooled_data.data * pool_switch
-                self.deconv(bottom_blob)
+                bottom_blob.data = Vutil.invert_maxpooling(v, self.guided)
+            # Fully-connected: transpose
+            elif (v.creator.label == 'LinearFunction'):
+                bottom_blob.data = Vutil.invert_linear(v,
+                    self.fixed_RMS, self.guided, self.ignore_bias)
+            # その他(LRN等)
+            else:
+                bottom_blob.data = v.data
+            # 1つ前の層をたどる
+            v = v.creator.inputs[0]
 
     def get_deconv(self, variable, indices):
         # 1. 最も活性した場所以外を0にする
@@ -141,7 +89,7 @@ class DeconvAcquirer(extensions.Evaluator):
         isfc = Vutil.has_fc_layer(variable)
         # 全結合層の可視化の場合
         if isfc:
-            values = get_fc_info(variable, indices)
+            values = Vutil.get_fc_info(variable, indices)
             variable.data.fill(0)
             for i, (j, v) in enumerate(zip(indices, values)):
                 variable.data[i, j] = v
@@ -241,7 +189,11 @@ class DeconvAcquirer(extensions.Evaluator):
             layer_variable = Vutil.get_variable(
                 observation[self.lastname], self.layer_rank)
             # 最大値の位置の計算に必要な入力層の領域を取得
-            bounds = Vutil.get_max_bounds(layer_variable, indices)
+            isfc = Vutil.has_fc_layer(layer_variable)
+            if isfc:
+                bounds = Vutil.get_data_bounds(layer_variable)
+            else:
+                bounds = Vutil.get_max_bounds(layer_variable, indices)
             # deconvを実行
             deconv_data = self.get_deconv(
                 layer_variable, indices)
