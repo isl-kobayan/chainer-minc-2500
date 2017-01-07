@@ -66,17 +66,19 @@ class DeconvAcquirer(extensions.Evaluator):
             # Convolution -> Deconvolution
             if (v.creator.label == 'Convolution2DFunction'):
                 bottom_blob.data = Vutil.invert_convolution(v,
-                    self.fixed_RMS, self.guided, self.ignore_bias)
+                    guided=self.guided, ignore_bias=self.ignore_bias,
+                    rms=self.fixed_RMS)
             # relu -> relu
             elif (v.creator.label == 'ReLU'):
                 bottom_blob.data = Vutil.invert_relu(v)
             # Pooling -> UnPooling
             elif (v.creator.label == 'MaxPooling2D'):
-                bottom_blob.data = Vutil.invert_maxpooling(v, self.guided)
+                bottom_blob.data = Vutil.invert_maxpooling(v, guided=self.guided)
             # Fully-connected: transpose
             elif (v.creator.label == 'LinearFunction'):
                 bottom_blob.data = Vutil.invert_linear(v,
-                    self.fixed_RMS, self.guided, self.ignore_bias)
+                    guided=self.guided, ignore_bias=self.ignore_bias,
+                    rms=self.fixed_RMS)
             # その他(LRN等)
             else:
                 bottom_blob.data = v.data

@@ -5,6 +5,7 @@ import six
 from chainer import cuda
 import numpy as np
 import cupy
+import chainer.functions as F
 '''
 import chainer
 from chainer.training import extensions
@@ -193,7 +194,7 @@ def get_fc_info(variable, indices):
 
     info=[]
     for d, i in zip(variable.data, indices):
-        info.append(d[i])
+        info.append(d[i].copy())
     return info
 
 def get_max_bounds(variable, channels):
@@ -277,7 +278,11 @@ def get_RMS(x, axis=None):
         rms = np.linalg.norm(x, axis=axis) ** 2 / np.product(x.shape)'''
     N = np.product(x.shape)
     if axis is not None:
-        N = N / x.shape[axis]
+        if hasattr(axis, '__getitem__'):
+            N = reduce(lambda a,b: a*b, [x.shape[i] for i in tuple(axis)])
+            print(N)
+        else:
+            N = x.shape[axis]
     rms = xp.sqrt(xp.sum(x**2, axis=axis) / N)
     return rms
 
@@ -288,13 +293,13 @@ def get_argmax_N(X, N):
     else:
         return np.argsort(X.get(), axis=0)[::-1][:N]
 
-def invert_convolution(variable, rms=0.02, guided=True, ignore_bias=True):
+def invert_convolution(variable, guided=True, ignore_bias=True, rms=0.02, rms_axis=None):
     """ 畳み込み後の~chainer.Variableから、畳み込み前の状態を復元する
     Args:
         variable (~chainer.Variable): 畳み込み後の中間層
-        rms (float): 値が0以上の場合、畳み込みのフィルタ重みのRMSが指定された値になるように、フィルタ重みを正規化します。
         guided (bool): guided backpropagation を行う場合はTrue、行わない場合はFalse.
         ignore_bias: バイアス項を無視する場合はTrue、考慮する場合はFalse.
+        rms (float): 値が0以上の場合、畳み込みのフィルタ重みのRMSが指定された値になるように、フィルタ重みを正規化します。
     Returns:
         data (ndarray): 復元された畳み込み前の中間層のデータ(返されるのは~chainer.Variableではないことに注意)
     """
@@ -307,7 +312,9 @@ def invert_convolution(variable, rms=0.02, guided=True, ignore_bias=True):
     convW = v.creator.inputs[1].data
     xp = cuda.get_array_module(convW)
 
-    scale = Vutil.get_RMS(convW) / rms if rms > 0 else 1
+    scale = rms / get_RMS(convW, axis=rms_axis) if rms > 0 else 1
+    scale = scale.reshape(-1,1,1,1)
+    print(scale, scale.shape)
     '''if rms > 0:
         rmsW = Vutil.get_RMS(convW)
         scale = rmsW / rms
@@ -388,13 +395,13 @@ def invert_maxpooling(variable, guided=True):
     # Max Location Switchesが1のところだけUnPoolingの結果を伝搬、それ以外は0
     return unpooled_data.data * pool_switch
 
-def invert_linear(variable, rms=0.02, guided=True, ignore_bias=True):
+def invert_linear(variable, guided=True, ignore_bias=True, rms=0.02):
     """ 全結合層を通った後の~chainer.Variableから、通る前の状態を復元する
     Args:
         variable (~chainer.Variable): 全結合層を通った後の中間層
-        rms (float): 値が0以上の場合、重みのRMSが指定された値になるように、重みを正規化します。
         guided (bool): guided backpropagation を行う場合はTrue、行わない場合はFalse.
         ignore_bias: バイアス項を無視する場合はTrue、考慮する場合はFalse.
+        rms (float): 値が0以上の場合、重みのRMSが指定された値になるように、重みを正規化します。
     Returns:
         data (ndarray): 復元された全結合層を通る前の中間層のデータ(返されるのは~chainer.Variableではないことに注意)
     """
@@ -405,8 +412,8 @@ def invert_linear(variable, rms=0.02, guided=True, ignore_bias=True):
 
     bshape = bottom_blob.data.shape
     W = v.creator.inputs[1].data
-    scale = Vutil.get_RMS(W) / rms if rms > 0 else 1
-    scale = 1
+    scale = rms / get_RMS(W) if rms > 0 else 1
+    #scale = 1
     W = W * scale
 
     # もし全結合層のバイアスを考慮する場合、先にバイアス分を引いておく
@@ -418,7 +425,7 @@ def invert_linear(variable, rms=0.02, guided=True, ignore_bias=True):
     inv_data = F.linear(in_data, W.T)
 
     # guided backpropagation
-    if self.guided:
+    if guided:
         # そもそも順伝搬時の値が0以下だったら伝搬させない
         switch = bottom_blob.data > 0
         inv_data.data *= switch.reshape(inv_data.data.shape)
