@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""dimensionaly reduction
+"""dimensionality reduction
 
 Prerequisite: To run this example, execute extrect_features.py.
 
@@ -25,7 +25,8 @@ def main(args):
     #winidx_path = os.path.join(outputdir,
     #    'cos-distance_' + os.path.basename(args.weights))
     point_path = os.path.splitext(args.vectors)[0] + \
-        '_{0}_points_it{1}_s{2}.txt'.format(args.algorithm, args.iteration, args.samples)
+        '_{0}_{1}d-points_it{2}_s{3}.txt'.format(
+        args.algorithm, args.components, args.iteration, args.samples)
     fig_path = os.path.splitext(args.vectors)[0] + \
         '_{0}_it{1}_s{2}.eps'.format(args.algorithm, args.iteration, args.samples)
 
@@ -52,21 +53,20 @@ def main(args):
     #print(selected_vectors)
     #print(Ys)
     if args.algorithm == 'tsne':
-        model = TSNE(n_components=2, n_iter=args.iteration, angle=args.angle, metric=args.metric)
+        model = utils.TSNE(n_components=args.components, n_iter=args.iteration,
+        n_iter_without_progress=args.preprocessdim, angle=args.angle, metric=args.metric)
     elif args.algorithm == 'mds':
-        model = MDS(n_components = 2, n_jobs=-1)
+        model = MDS(n_components=args.components, n_jobs=-1)
     elif args.algorithm == 'lle':
-        model = LLE(n_components = 2, n_neighbors = args.neighbors, n_jobs=-1)
+        model = LLE(n_components=args.components, n_neighbors = args.neighbors, n_jobs=-1)
     elif args.algorithm == 'isomap':
-        model = Isomap(n_components = 2, n_neighbors = args.neighbors, n_jobs=-1)
+        model = Isomap(n_components=args.components, n_neighbors = args.neighbors, n_jobs=-1)
     elif args.algorithm == 'pca':
-        model = PCA(n_components = 2)
+        model = PCA(n_components=args.components)
     #X = model.fit_transform(v[:23*10])
     print('fitting...')
     X = model.fit_transform(np.array(selected_vectors))
     Y = np.asarray([x[1] for x in val])
-    plt.figure(2, figsize=(8, 6))
-    plt.clf()
 
     if args.algorithm == 'pca':
         pca = PCA(n_components = 100)
@@ -75,28 +75,51 @@ def main(args):
         print "explained", E
         print "cumsum E", np.cumsum(E)
 
+    print('drawing...')
+
     markers=['o', 'x', 'v', '+']
 
-    #plt.scatter(X[:, 0], X[:, 1], c=Y[:23*10], cmap=plt.cm.jet)
-    #plt.scatter(X[:, 0], X[:, 1], c=np.array(Ys), cmap=plt.cm.jet, label=categories)
-    for i in range(C):
-        plt.scatter(X[samples_per_c*i:samples_per_c*(i+1), 0],
-        X[samples_per_c*i:samples_per_c*(i+1), 1],
-        marker=markers[i % len(markers)],
-        s = 10,
-        color=plt.cm.jet(float(i) / (C-1)), label=categories[i])
-    plt.xlabel(args.algorithm + '1')
-    plt.ylabel(args.algorithm + '2')
-    plt.legend(fontsize=10.25, scatterpoints=1, bbox_to_anchor=(1.05, 1.01), loc='upper left')
-    plt.subplots_adjust(right=0.7)
-    #plt.show()
-    plt.savefig(fig_path)
-    print(model.get_params())
+    if args.components == 2:
+        plt.figure(2, figsize=(8, 6))
+        plt.clf()
 
+        #plt.scatter(X[:, 0], X[:, 1], c=Y[:23*10], cmap=plt.cm.jet)
+        #plt.scatter(X[:, 0], X[:, 1], c=np.array(Ys), cmap=plt.cm.jet, label=categories)
+
+        for i in range(C):
+            plt.scatter(X[samples_per_c*i:samples_per_c*(i+1), 0],
+            X[samples_per_c*i:samples_per_c*(i+1), 1],
+            marker=markers[i % len(markers)],
+            s = 10,
+            color=plt.cm.jet(float(i) / (C-1)), label=categories[i])
+        plt.xlabel(args.algorithm + '1')
+        plt.ylabel(args.algorithm + '2')
+        plt.legend(fontsize=10.25, scatterpoints=1, bbox_to_anchor=(1.05, 1.01), loc='upper left')
+        plt.subplots_adjust(right=0.7)
+        #plt.show()
+        plt.savefig(fig_path)
+    elif args.components == 3:
+        from mpl_toolkits.mplot3d import Axes3D
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.set_xlabel("X-axis")
+        ax.set_ylabel("Y-axis")
+        ax.set_zlabel("Z-axis")
+        for i in range(C):
+            ax.scatter(
+                X[samples_per_c*i:samples_per_c*(i+1), 0],
+                X[samples_per_c*i:samples_per_c*(i+1), 1],
+                X[samples_per_c*i:samples_per_c*(i+1), 2],
+                marker=markers[i % len(markers)],
+                s=10,
+                c=plt.cm.jet(float(i) / (C-1)), label=categories[i])
+        plt.show()
+
+    print(model.get_params())
     # save points
     with open(point_path, 'w') as fp:
         for path, t, p in zip(selected_images, Ys, X):
-            fp.write("{0}\t{1}\t{2}\t{3}\n".format(path, t, p[0], p[1]))
+            fp.write("{0}\t{1}\t{2}\n".format(path, t, '\t'.join(map(str,p))))
 
 
 
@@ -108,13 +131,17 @@ parser.add_argument('--algorithm', '-al', default='tsne', choices=('tsne', 'mds'
                     help='method of dimensionaly reduction')
 parser.add_argument('--categories', '-c', default='categories.txt',
                     help='Path to category list file')
+parser.add_argument('--components', '-d', type=int, default=2,
+                    help='Path to category list file')
+parser.add_argument('--preprocessdim', type=int, default=30,
+                    help='Path to category list file')
 parser.add_argument('--iteration', '-i', type=int, default=200,
                     help='Learning iteraion')
 parser.add_argument('--samples', '-s', type=int, default=200,
                     help='Learning iteraion')
 parser.add_argument('--angle', '-a', type=float, default=0.5,
                     help='angle of t-SNE')
-parser.add_argument('--perplexity', '-p', type=int, default=30,
+parser.add_argument('--perplexity', '-p', type=float, default=30.0,
                     help='perplexity of t-SNE')
 parser.add_argument('--epoch', '-E', type=int, default=0,
                     help='Learning epoch')

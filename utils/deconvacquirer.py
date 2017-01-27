@@ -35,7 +35,7 @@ class DeconvAcquirer(extensions.Evaluator):
     ignore_bias = True
     fixed_RMS = 0.020
     rms_axis = 0
-
+    gamma = 2.0
 
 
     '''trigger = 1, 'epoch'
@@ -67,7 +67,7 @@ class DeconvAcquirer(extensions.Evaluator):
             if (v.creator.label == 'Convolution2DFunction'):
                 bottom_blob.data = Vutil.invert_convolution(v,
                     guided=self.guided, ignore_bias=self.ignore_bias,
-                    rms=self.fixed_RMS)
+                    rms=self.fixed_RMS, gamma=self.gamma)
             # relu -> relu
             elif (v.creator.label == 'ReLU'):
                 bottom_blob.data = Vutil.invert_relu(v)
@@ -78,7 +78,7 @@ class DeconvAcquirer(extensions.Evaluator):
             elif (v.creator.label == 'LinearFunction'):
                 bottom_blob.data = Vutil.invert_linear(v,
                     guided=self.guided, ignore_bias=self.ignore_bias,
-                    rms=self.fixed_RMS)
+                    rms=self.fixed_RMS, gamma=self.gamma)
             # その他(LRN等)
             else:
                 bottom_blob.data = v.data

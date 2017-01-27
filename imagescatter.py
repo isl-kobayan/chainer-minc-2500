@@ -32,7 +32,7 @@ def main(args):
     with doc.head:
         #link(rel='stylesheet', href='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.11/c3.min.css')
         link(rel='stylesheet', href='c3.css')
-        script(type='text/javascript', src='https://cdn.jsdelivr.net/d3js/latest/d3.min.js')
+        script(type='text/javascript', src='https://d3js.org/d3.v3.min.js')
         script(type='text/javascript', src='https://cdnjs.cloudflare.com/ajax/libs/c3/0.4.11/c3.min.js')
         script(type='text/javascript', src='http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js')
         _css = style(type='text/css')
@@ -110,7 +110,7 @@ $(function() {
         $('#images figure').remove();
     });
     $('#images').on("mouseup", "figure", function(e){
-        if (event.ctrlKey || e.which == 2) {
+        if (e.ctrlKey || e.which == 2) {
             console.log(this);
             $(this).remove();
             names = $(this).attr('name').split('-');

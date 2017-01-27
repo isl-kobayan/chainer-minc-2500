@@ -293,7 +293,7 @@ def get_argmax_N(X, N):
     else:
         return np.argsort(X.get(), axis=0)[::-1][:N]
 
-def invert_convolution(variable, guided=True, ignore_bias=True, rms=0.02, rms_axis=None):
+def invert_convolution(variable, guided=True, ignore_bias=True, rms=0.02, rms_axis=None, gamma=1.0):
     """ 畳み込み後の~chainer.Variableから、畳み込み前の状態を復元する
     Args:
         variable (~chainer.Variable): 畳み込み後の中間層
@@ -309,7 +309,7 @@ def invert_convolution(variable, guided=True, ignore_bias=True, rms=0.02, rms_ax
     bottom_blob = v.creator.inputs[0]
 
     # 畳み込みフィルタをRMSがfixed_RMSになるように正規化
-    convW = v.creator.inputs[1].data
+    convW = v.creator.inputs[1].data.copy()
     xp = cuda.get_array_module(convW)
 
     scale = rms / get_RMS(convW, axis=rms_axis) if rms > 0 else 1
@@ -323,6 +323,10 @@ def invert_convolution(variable, guided=True, ignore_bias=True, rms=0.02, rms_ax
         scale = 1'''
 
     convW = convW * scale
+    #abs_convW = abs(convW)
+    #Wmax = convW.std() * 2
+    #xp = cuda.get_array_module(convW)
+    #convW = xp.sign(convW) * Wmax * ((abs_convW/Wmax)**gamma)
 
     # もし畳み込み層のバイアスを考慮する場合、先にバイアス分を引いておく
     if not ignore_bias and len(v.creator.inputs) == 3:
@@ -395,7 +399,7 @@ def invert_maxpooling(variable, guided=True):
     # Max Location Switchesが1のところだけUnPoolingの結果を伝搬、それ以外は0
     return unpooled_data.data * pool_switch
 
-def invert_linear(variable, guided=True, ignore_bias=True, rms=0.02):
+def invert_linear(variable, guided=True, ignore_bias=True, rms=0.02, gamma=1.0):
     """ 全結合層を通った後の~chainer.Variableから、通る前の状態を復元する
     Args:
         variable (~chainer.Variable): 全結合層を通った後の中間層
@@ -411,10 +415,14 @@ def invert_linear(variable, guided=True, ignore_bias=True, rms=0.02):
     bottom_blob = v.creator.inputs[0]
 
     bshape = bottom_blob.data.shape
-    W = v.creator.inputs[1].data
+    W = v.creator.inputs[1].data.copy()
     scale = rms / get_RMS(W) if rms > 0 else 1
     #scale = 1
     W = W * scale
+    #xp = cuda.get_array_module(W)
+    #absW = abs(W)
+    #Wmax = W.std() * 2
+    #W = xp.sign(W) * Wmax * ((absW/Wmax)**gamma)
 
     # もし全結合層のバイアスを考慮する場合、先にバイアス分を引いておく
     if not ignore_bias and len(v.creator.inputs) == 3:

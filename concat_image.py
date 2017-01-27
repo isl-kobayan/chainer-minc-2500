@@ -16,6 +16,8 @@ parser.add_argument('--scale', '-s', type=int, default=1,
                     help='filter scale')
 parser.add_argument('--pad', '-p', type=int, default=1,
                     help='filter padding')
+parser.add_argument('--quality', '-q', type=int, default=100,
+                    help='filter padding')
 parser.add_argument('--mean', '-m', nargs=3, default=[124, 117, 104],
                     help='Output directory')
 parser.add_argument('--bordercolor', '-b', nargs=3, default=[255, 255, 255],
@@ -81,4 +83,4 @@ if __name__ == '__main__':
 
         print(f, max_size)
         tiled_image.save(os.path.join(outdir, '{0:0>4}.jpg'.format(f)),
-            'JPEG', quality=100, optimize=True)
+            'JPEG', quality=args.quality, optimize=True)
