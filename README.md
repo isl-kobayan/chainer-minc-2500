@@ -36,7 +36,7 @@ Computer Vision and Pattern Recognition (CVPR), 2015.
   ```
 * available pre-trained architechures
   * [AlexNet](https://github.com/BVLC/caffe/tree/master/models/bvlc_alexnet)
-  * [GoogLeNet](https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet)
+  * [GoogLeNet(v1)](https://github.com/BVLC/caffe/tree/master/models/bvlc_googlenet)
   * VGG ([16 layers](https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md) and [19 layers](https://gist.github.com/ksimonyan/3785162f95cd2d5fee77#file-readme-md))
   * [NIN (Network-in-Network)](https://gist.github.com/mavenlin/d802a5849de39225bcc6)
   * [SqueezeNet (ver. 1.0 and ver. 1.1)](https://github.com/DeepScale/SqueezeNet)  
@@ -64,18 +64,21 @@ example: visualize "conv1" layer of imagenet-pretrained AlexNet (bvlc_alexnet.ca
   python extract_features.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
   -m ilsvrc_2012_mean.npy -l conv1
   ```  
-  This program generates "./result/alex/extract/top_conv1.txt".
+  This program generates "./result/alex/extract/features/top_conv1.txt".
 
-2. acquire most activated image (and region)
+2. acquire most activated image patch
   ```
   python acquire_patches.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
   -m ilsvrc_2012_mean.npy -l conv1
   ```  
-  This program generates "./result/alex/extract/maxbounds_conv1.txt" and "./result/alex/extract/maxloc_conv1.txt".
+  Please execute procedure 1 before executing this procedure.  
+  This program generates images (./result/alex/extract/conv1/*.png).  
+  This program also generates "./result/alex/extract/features/maxbounds_conv1.txt" and "./result/alex/extract/features/maxloc_conv1.txt".
 
-3. acquire activated patch
+3. acquire deconv image
   ```
-  python acquire_patch_images.py ./minc-2500/all_list.txt -a alex -b 50 -R ./minc-2500 \
+  python acquire_patches.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
   -m ilsvrc_2012_mean.npy -l conv1
-  ```
-  This program generates "./result/alex/extract/conv1/*.png"
+  ```  
+  Please execute procedure 1 before executing this procedure (You don't have to execute procedure 2).  
+  This program generates images (./result/alex/extract/deconv_conv1/*.png).  
