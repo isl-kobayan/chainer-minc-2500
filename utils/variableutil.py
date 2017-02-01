@@ -314,7 +314,7 @@ def invert_convolution(variable, guided=True, ignore_bias=True, rms=0.02, rms_ax
 
     scale = rms / get_RMS(convW, axis=rms_axis) if rms > 0 else 1
     scale = scale.reshape(-1,1,1,1)
-    print(scale, scale.shape)
+    #print(scale, scale.shape)
     '''if rms > 0:
         rmsW = Vutil.get_RMS(convW)
         scale = rmsW / rms

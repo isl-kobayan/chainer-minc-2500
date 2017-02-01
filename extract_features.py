@@ -81,6 +81,7 @@ def main(args):
     val_extractor.layer_rank = eval_model.layer_rank[args.layer]
     val_extractor.layer_name = args.layer
     val_extractor.operation = args.operation
+    val_extractor.save_features = args.savefeatures
     val_extractor.top = args.top
     if 'googlenet' in args.arch:
         val_extractor.lastname = 'validation/main/loss3'
@@ -110,6 +111,8 @@ parser.add_argument('--layer', '-l', default='conv1',
                     help='layer name')
 parser.add_argument('--operation', '-op', choices=('max', 'mean', 'None'), default='max',
                     help='operation')
+parser.add_argument('--savefeatures', type=bool, default=False,
+                    help='save features as npy if True')
 parser.add_argument('--scale', '-s', type=int, default=1,
                     help='filter scale')
 parser.add_argument('--pad', '-p', type=int, default=1,

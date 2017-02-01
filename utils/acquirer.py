@@ -19,6 +19,7 @@ import os
 import csv
 import ioutil
 import variableutil as Vutil
+from tqdm import tqdm
 
 class Acquirer(extensions.Evaluator):
     lastname = 'validation/main/loss'
@@ -27,6 +28,7 @@ class Acquirer(extensions.Evaluator):
     operation = 'max'
     top = None
     n_features = None
+    mean = None
 
     '''trigger = 1, 'epoch'
     default_name = 'validation'
@@ -74,17 +76,22 @@ class Acquirer(extensions.Evaluator):
                                    target.namedlinks(skipself=True))
 
         with reporter:
+            self.patch_image_dir = os.path.join(trainer.out, self.layer_name)
+            if not os.path.exists(self.patch_image_dir):
+                os.makedirs(self.patch_image_dir)
             result, locs, bounds = self.evaluate()
-            if not os.path.exists(trainer.out):
-                os.makedirs(trainer.out)
+
+            outputdir = os.path.join(trainer.out, 'features')
+            if not os.path.exists(outputdir):
+                os.makedirs(outputdir)
             #print(bounds)
             #self.savetxt(os.path.join(trainer.out, self.layer_name + '.txt'),
             #                features, delimiter='\t')
             #cupy.savez(os.path.join(trainer.out, self.layer_name + '.npz'),
             #                **{self.layer_name: features})
-            self.save_tuple_list(os.path.join(trainer.out,
+            self.save_tuple_list(os.path.join(outputdir,
                         'maxloc_' + self.layer_name + '.txt'), locs)
-            self.save_tuple_list(os.path.join(trainer.out,
+            self.save_tuple_list(os.path.join(outputdir,
                         'maxbounds_' + self.layer_name + '.txt'), bounds)
         reporter_module.report(result)
         return result
@@ -102,7 +109,9 @@ class Acquirer(extensions.Evaluator):
         summary = reporter_module.DictSummary()
         max_locs = []
         bounds = []
+        n_processed = 0
         filter_idx = 0
+        pbar = tqdm(total=len(iterator.dataset))
         for batch in it:
             observation = {}
             with reporter_module.report_scope(observation):
@@ -118,19 +127,41 @@ class Acquirer(extensions.Evaluator):
                 else:
                     in_var = variable.Variable(in_arrays, volatile='off')
                     eval_func(in_var)
+            pbar.update(len(batch))
 
             indices = np.arange(filter_idx, filter_idx + len(batch)) % self.n_features
 
             # deconv対象の層のVariableを取得
             layer_variable = Vutil.get_variable(
                 observation[self.lastname], self.layer_rank)
+
+            # 最大値の位置の計算に必要な入力層の領域を取得
+            isfc = Vutil.has_fc_layer(layer_variable)
+            if isfc:
+                batch_bounds = Vutil.get_data_bounds(layer_variable)
+            else:
+                batch_bounds = Vutil.get_max_bounds(layer_variable, indices)
+
+            topk = np.arange(n_processed, n_processed + len(batch)) // self.n_features
+            input_data = Vutil.get_data_layer(layer_variable).data
+
+            for k, f, d, b in zip(topk, indices, input_data, batch_bounds):
+                #print(dir(d))
+                # deconvされた入力層に平均画像を足して画像化
+                img = ioutil.deprocess(d.get(), self.mean)
+                # 最大値の位置の計算に必要な入力層の領域だけクロッピングして保存
+                img.crop((b[0], b[2], b[1], b[3])).save(
+                os.path.join(self.patch_image_dir,
+                    "{0:0>4}_{1:0>2}.png".format(f, k)))
+
             max_locs.extend(Vutil.get_max_locs(layer_variable, indices))
-            bounds.extend(Vutil.get_max_bounds(layer_variable, indices))
+            bounds.extend(batch_bounds)
 
             filter_idx = (filter_idx + len(batch)) % self.n_features
-
+            n_processed += len(batch)
             #self.add_to_confmat(self.confmat, in_vars[1].data, self.getpred(observation[self.lastname]))
             summary.add(observation)
+        pbar.close()
         #print(self.confmat)
         #print(np.diag(self.confmat))
         #print(1.0 * np.diag(self.confmat).sum() / self.confmat.sum())

@@ -18,6 +18,7 @@ import cupy
 import os
 import ioutil
 import variableutil as Vutil
+from tqdm import tqdm
 
 class Extractor(extensions.Evaluator):
     lastname = 'validation/main/loss'
@@ -25,7 +26,7 @@ class Extractor(extensions.Evaluator):
     layer_name = None
     operation = 'max'
     top = None
-    save_features = True
+    save_features = False
 
     '''trigger = 1, 'epoch'
     default_name = 'validation'
@@ -61,20 +62,21 @@ class Extractor(extensions.Evaluator):
 
         with reporter:
             result, features = self.evaluate()
-            if not os.path.exists(trainer.out):
-                os.makedirs(trainer.out)
+            outputdir = os.path.join(trainer.out, 'features')
+            if not os.path.exists(outputdir):
+                os.makedirs(outputdir)
             #ioutil.savetxt(os.path.join(trainer.out, self.layer_name + '.txt'),
             #                features, delimiter='\t')
             #cupy.savez(os.path.join(trainer.out, self.layer_name + '.npz'),
             #                **{self.layer_name: features})
             if self.save_features:
-                cupy.save(os.path.join(trainer.out, self.layer_name + '.npy'),
+                cupy.save(os.path.join(outputdir, self.layer_name + '.npy'),
                         features)
 
             if self.top is not None:
                 top_N_args = Vutil.get_argmax_N(features, self.top)
                 #print(top_N_args)
-                ioutil.savetxt(os.path.join(trainer.out,
+                ioutil.savetxt(os.path.join(outputdir,
                             'top_' + self.layer_name + '.txt'), top_N_args,
                             fmt='%d', delimiter='\t')
                 #np.savez(os.path.join(trainer.out,
@@ -96,6 +98,7 @@ class Extractor(extensions.Evaluator):
         summary = reporter_module.DictSummary()
         features = None
         max_loc = None
+        pbar = tqdm(total=len(iterator.dataset))
         for batch in it:
             observation = {}
             with reporter_module.report_scope(observation):
@@ -111,6 +114,7 @@ class Extractor(extensions.Evaluator):
                 else:
                     in_var = variable.Variable(in_arrays, volatile='off')
                     eval_func(in_var)
+            pbar.update(len(batch))
 
             # deconv対象の層のVariableを取得
             layer_variable = Vutil.get_variable(
@@ -125,6 +129,7 @@ class Extractor(extensions.Evaluator):
                     layer_variable, self.operation)))
             #self.add_to_confmat(self.confmat, in_vars[1].data, self.getpred(observation[self.lastname]))
             summary.add(observation)
+        pbar.close()
         #print(self.confmat)
         #print(np.diag(self.confmat))
         #print(1.0 * np.diag(self.confmat).sum() / self.confmat.sum())

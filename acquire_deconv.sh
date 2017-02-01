@@ -1,6 +1,7 @@
 DATA_ROOT=./minc-2500
 TEACH_DATA=./minc-2500/all_list.txt
 SRC=acquire_deconv.py
+VGG_BEST_MODEL=./result/vgg16/20160923-1544_bs21/model
 
 #python ${SRC} -a alex --finetune -b 50 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -m ilsvrc_2012_mean.npy -l conv1
 #python ${SRC} -a alex --finetune -b 50 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -m ilsvrc_2012_mean.npy -l conv2
@@ -61,13 +62,22 @@ SRC=acquire_deconv.py
 #python ${SRC} -a minc-vgg16 --finetune -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv4_3
 #python ${SRC} -a minc-vgg16 --finetune -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv5_3
 
-#python ${SRC} -a vgg16 --initmodel ./result/vgg16/20160923-1544_bs21/model -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv1_2 --rms 0.025
-#python ${SRC} -a vgg16 --initmodel ./result/vgg16/20160923-1544_bs21/model -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv2_2
-#python ${SRC} -a vgg16 --initmodel ./result/vgg16/20160923-1544_bs21/model -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv3_3
-#python ${SRC} -a vgg16 --initmodel ./result/vgg16/20160923-1544_bs21/model -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv4_3 --rms 0.02
-#python ${SRC} -a vgg16 --initmodel ./result/vgg16/20160923-1544_bs21/model -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv5_3 --rms 0.02
-python ${SRC} -a vgg16 --initmodel ./result/vgg16/20160923-1544_bs21/model -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l fc6 --rms 0.029
-python ${SRC} -a vgg16 --initmodel ./result/vgg16/20160923-1544_bs21/model -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l fc7 --rms 0.029
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv1_2 --rms 0.025
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv2_2
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv3_3
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv4_3 --rms 0.02
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv5_3 --rms 0.02
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l fc6 --rms 0.029
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l fc7 --rms 0.029
+
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv1_1 --rms 0.1
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv2_1
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv3_1
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv3_2
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv4_1
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv4_2
+python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv5_1 --rms 0.023
+python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv5_2 --rms 0.023
 
 #python ${SRC} -a googlenet --initmodel ./result/googlenet/20160922-0749_bs23/model -b 50 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv1
 #python ${SRC} -a googlenet --initmodel ./result/googlenet/20160922-0749_bs23/model -b 50 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv2_reduce

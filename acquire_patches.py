@@ -92,6 +92,7 @@ def main(args):
     eval_model = model.copy()
     eval_model.train = False
     val_acquirer = utils.Acquirer(val_iter, eval_model, device=args.gpu)
+    val_acquirer.mean = mean
     val_acquirer.layer_rank = eval_model.layer_rank[args.layer]
     val_acquirer.layer_name = args.layer
     val_acquirer.operation = args.operation

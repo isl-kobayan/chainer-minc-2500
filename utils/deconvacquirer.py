@@ -21,6 +21,8 @@ import chainer.functions as F
 import ioutil
 import variableutil as Vutil
 import math
+from tqdm import tqdm
+from multiprocessing import Process
 
 class DeconvAcquirer(extensions.Evaluator):
     lastname = 'validation/main/loss'
@@ -62,7 +64,7 @@ class DeconvAcquirer(extensions.Evaluator):
         # 今の層から入力層に辿り着くまで繰り返す
         while (v.creator is not None):
             bottom_blob = v.creator.inputs[0]
-            print(v.creator.label, v.rank)
+            #print(v.creator.label, v.rank)
             # Convolution -> Deconvolution
             if (v.creator.label == 'Convolution2DFunction'):
                 bottom_blob.data = Vutil.invert_convolution(v,
@@ -122,6 +124,14 @@ class DeconvAcquirer(extensions.Evaluator):
 
         return data_layer.data
 
+    def save_deconv(self, k, f, d, b):
+        # deconvされた入力層に平均画像を足して画像化
+        img = ioutil.deprocess(d, self.mean)
+        # 最大値の位置の計算に必要な入力層の領域だけクロッピングして保存
+        img.crop((b[0], b[2], b[1], b[3])).save(
+        os.path.join(self.deconv_image_dir,
+            "{0:0>4}_{1:0>2}.png".format(f, k)))
+
     def __call__(self, trainer):
         """override method of extensions.Evaluator."""
         # set up a reporter
@@ -169,6 +179,7 @@ class DeconvAcquirer(extensions.Evaluator):
         bounds = []
         n_processed = 0
         filter_idx = 0
+        pbar = tqdm(total=len(iterator.dataset))
         for batch in it:
             observation = {}
             with reporter_module.report_scope(observation):
@@ -184,6 +195,7 @@ class DeconvAcquirer(extensions.Evaluator):
                 else:
                     in_var = variable.Variable(in_arrays, volatile='off')
                     eval_func(in_var)
+            pbar.update(len(batch))
 
             indices = np.arange(filter_idx, filter_idx + len(batch)) % self.n_features
             #print('x', in_vars[0].data[0])
@@ -193,33 +205,37 @@ class DeconvAcquirer(extensions.Evaluator):
             # 最大値の位置の計算に必要な入力層の領域を取得
             isfc = Vutil.has_fc_layer(layer_variable)
             if isfc:
-                bounds = Vutil.get_data_bounds(layer_variable)
+                batch_bounds = Vutil.get_data_bounds(layer_variable)
             else:
-                bounds = Vutil.get_max_bounds(layer_variable, indices)
+                batch_bounds = Vutil.get_max_bounds(layer_variable, indices)
             # deconvを実行
             deconv_data = self.get_deconv(
                 layer_variable, indices)
 
             topk = np.arange(n_processed, n_processed + len(batch)) // self.n_features
 
-            for k, f, d, b in zip(topk, indices, deconv_data, bounds):
-                #print(dir(d))
+            jobs = []
+            for k, f, d, b in zip(topk, indices, deconv_data, batch_bounds):
                 # deconvされた入力層に平均画像を足して画像化
                 img = ioutil.deprocess(d.get(), self.mean)
                 # 最大値の位置の計算に必要な入力層の領域だけクロッピングして保存
                 img.crop((b[0], b[2], b[1], b[3])).save(
                 os.path.join(self.deconv_image_dir,
                     "{0:0>4}_{1:0>2}.png".format(f, k)))
+                #p=Process(target=self.save_deconv, args=(k,f,d.get(),b))
+                #p.start()
+                #jobs.append(p)
+            #for j in jobs: j.join()
 
             '''max_locs.extend(self.get_max_locs(
                 observation[self.lastname], self.layer_rank, indices))
-            bounds.extend(self.get_max_patch_bounds(
-                observation[self.lastname], self.layer_rank, indices))'''
+            bounds.extend(batch_bounds))'''
             filter_idx = (filter_idx + len(batch)) % self.n_features
             n_processed += len(batch)
 
             #self.add_to_confmat(self.confmat, in_vars[1].data, self.getpred(observation[self.lastname]))
             summary.add(observation)
+        pbar.close()
         #print(self.confmat)
         #print(np.diag(self.confmat))
         #print(1.0 * np.diag(self.confmat).sum() / self.confmat.sum())

@@ -66,7 +66,7 @@ class SaliencyMapAcquirer(extensions.Evaluator):
         # 今の層から入力層に辿り着くまで繰り返す
         while (v.creator is not None):
             bottom_blob = v.creator.inputs[0]
-            print(v.creator.label, v.rank)
+            #print(v.creator.label, v.rank)
             # Convolution -> Deconvolution
             if (v.creator.label == 'Convolution2DFunction'):
                 bottom_blob.data = Vutil.invert_convolution(v,
