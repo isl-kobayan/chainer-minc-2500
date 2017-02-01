@@ -4,7 +4,7 @@
 import chainer
 import chainer.functions as F
 import chainer.links as L
-import config
+from .. import config
 
 def deconv_old(variable):
     v = variable

@@ -1,7 +1,7 @@
 import chainer
 import chainer.functions as F
 import chainer.links as L
-import config
+from .. import config
 from chainer.functions import caffe
 import types
 
