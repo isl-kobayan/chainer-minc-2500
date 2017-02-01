@@ -89,9 +89,11 @@ class Acquirer(extensions.Evaluator):
             #                features, delimiter='\t')
             #cupy.savez(os.path.join(trainer.out, self.layer_name + '.npz'),
             #                **{self.layer_name: features})
-            self.save_tuple_list(os.path.join(outputdir,
+            if locs:
+                self.save_tuple_list(os.path.join(outputdir,
                         'maxloc_' + self.layer_name + '.txt'), locs)
-            self.save_tuple_list(os.path.join(outputdir,
+            if bounds:
+                self.save_tuple_list(os.path.join(outputdir,
                         'maxbounds_' + self.layer_name + '.txt'), bounds)
         reporter_module.report(result)
         return result
@@ -154,8 +156,9 @@ class Acquirer(extensions.Evaluator):
                 os.path.join(self.patch_image_dir,
                     "{0:0>4}_{1:0>2}.png".format(f, k)))
 
-            max_locs.extend(Vutil.get_max_locs(layer_variable, indices))
-            bounds.extend(batch_bounds)
+            if not isfc:
+                max_locs.extend(Vutil.get_max_locs(layer_variable, indices))
+                bounds.extend(batch_bounds)
 
             filter_idx = (filter_idx + len(batch)) % self.n_features
             n_processed += len(batch)
