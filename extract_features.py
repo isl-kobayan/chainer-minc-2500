@@ -109,10 +109,10 @@ parser.add_argument('--arch', '-a', choices=models.archs.keys(), default='nin',
                     help='Convnet architecture')
 parser.add_argument('--layer', '-l', default='conv1',
                     help='layer name')
-parser.add_argument('--operation', '-op', choices=('max', 'mean', 'None'), default='max',
+parser.add_argument('--operation', '-op', choices=('max', 'mean', 'acts', 'None'), default='max',
                     help='operation')
-parser.add_argument('--savefeatures', type=bool, default=False,
-                    help='save features as npy if True')
+parser.add_argument('--savefeatures', action='store_true',
+                    help='save features as npy if specified')
 parser.add_argument('--scale', '-s', type=int, default=1,
                     help='filter scale')
 parser.add_argument('--pad', '-p', type=int, default=1,

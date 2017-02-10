@@ -7,7 +7,7 @@ class Inverter(chainer.Chain):
 
     """ Inverter """
 
-    def __init__(self, model, label, initialImg=None, layers = []):
+    def __init__(self, model, label, initialImg=None, layers=[], beta=2, p=10, kambda_a=1, lambda_tv=10, lambda_lp=10):
         eval_model = model.copy()
         eval_model.train = False
         self.labelsize = model.labelsize
@@ -22,12 +22,11 @@ class Inverter(chainer.Chain):
             #model = eval_model,
             img=L.Parameter(initialImg)
         )
-        self.train = True
-        self.beta = 2
-        self.lambda_p = 100
-        self.lambda_tv = 1e-6
-        self.p = 6
-        self.lambda_lp = 0#4e-10
+        self.beta = beta
+        self.p = p
+        self.lambda_a = lambda_a
+        self.lambda_tv = lambda_tv
+        self.lambda_lp = lambda_lp
         self.train = True
         self.add_persistent('Wh_data', np.array([[[[1],[-1]]]], dtype='f'))
         self.add_persistent('Ww_data', np.array([[[[1, -1]]]], dtype='f'))
@@ -80,18 +79,19 @@ class Inverter(chainer.Chain):
         t = chainer.Variable(self.t_dummy)
         model_loss = self.model(self.img(), t)
         #p = self.getprobability(model_loss)
-        p = self.getbeforesoftmax(model_loss)
+        a = self.getbeforesoftmax(model_loss)
         #print(F.sum(p**2).data)
         #p = (1 / F.sum(p**2)) .* (p**2)
         #ce = self.getCrossEntropy(model_loss)
         #print(t.data, ce.data, p.data, tp.data)
         #class_mse = ce#F.mean_squared_error(p, tp)
-        class_mse = F.sum(-F.log(p**2 / F.sum(p**2).data) * tp)
+        #class_mse = F.sum(-F.log(p**2 / F.sum(p**2).data) * tp)
+        activation = -F.sum(a * tp)
         #class_mse = F.sum(-F.log(p) * tp)
-        #lp = F.sum(self.img()**self.p)
+        lp = (F.sum(self.img()**self.p) ** (1.0/self.p)) / np.prod(self.img().data.shape[1:])
 
-        tv = self.tv_norm(self.img(), Wh, Ww)
-        loss = self.lambda_p * class_mse + self.lambda_tv * tv# + self.lambda_lp * lp
-        chainer.report({'inv_loss': loss, 'class_mse': class_mse, 'tv': tv}, self)
+        tv = self.tv_norm(self.img(), Wh, Ww) / np.prod(self.img().data.shape[1:])
+        loss = self.lambda_a * activation + self.lambda_tv * tv + self.lambda_lp * lp
+        chainer.report({'inv_loss': loss, 'activation': activation, 'tv': tv, 'lp': lp}, self)
         #print('inverter', x.data, class_mse.data, tv.data)
         return loss

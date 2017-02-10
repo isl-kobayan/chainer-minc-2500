@@ -70,7 +70,8 @@ class Extractor(extensions.Evaluator):
             #cupy.savez(os.path.join(trainer.out, self.layer_name + '.npz'),
             #                **{self.layer_name: features})
             if self.save_features:
-                cupy.save(os.path.join(outputdir, self.layer_name + '.npy'),
+                xp = cuda.get_array_module(features)
+                xp.save(os.path.join(outputdir, self.layer_name + '.npy'),
                         features)
 
             if self.top is not None:

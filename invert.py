@@ -58,7 +58,8 @@ def main(args):
         model.to_gpu()
 
     nowt = datetime.datetime.today()
-    outputdir = args.out + '/' + args.arch + '/' + nowt.strftime("%Y%m%d-%H%M")  + '_bs' +  str(args.batchsize)
+    #outputdir = args.out + '/' + args.arch + '/' + nowt.strftime("%Y%m%d-%H%M")  + '_bs' +  str(args.batchsize)
+    outputdir = args.out
     if args.test and args.initmodel is not None:
         outputdir = os.path.dirname(args.initmodel)
     # Load the datasets and mean file
@@ -75,14 +76,16 @@ def main(args):
     #x_data = x_data * 10
     x0_sigma = 27098.11571533
     x_data = x_data / np.linalg.norm(x_data) * x0_sigma
+    print(x_data.max(), x_data.min())
     if args.infile:
         x_data = utils.io.read_image(args.infile, insize, mean)[np.newaxis]
 
-    print(x_data)
+    #print(x_data)
     inverter = utils.Inverter(model, args.label, x_data)
     # Set up an optimizer
     #optimizer = optimizers[args.opt]()
-    optimizer = utils.LBFGS()
+    #optimizer = utils.LBFGS()
+    optimizer = chainer.optimizers.RMSprop()
     #if args.opt == 'momentumsgd':
     if hasattr(optimizer, 'lr'):
         optimizer.lr = args.baselr
@@ -123,14 +126,15 @@ def main(args):
     #    inverter, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
     trainer.extend(utils.ImageSnapshot(
         inverter, 'img', mean,
-        'img_iter_{.updater.iteration}.png'), trigger=snapshot_interval)
+        'img' + str(args.label) +  '_iter_{.updater.iteration}.png'), trigger=snapshot_interval)
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
     trainer.extend(extensions.LogReport(trigger=log_interval))
     trainer.extend(extensions.PrintReport([
         'epoch', 'iteration', 'main/inv_loss', 'validation/main/inv_loss',
-        'main/class_mse', 'validation/main/class_mse',
+        'main/activation', 'validation/main/activation',
         'main/tv', 'validation/main/tv',
+        'main/lp', 'validation/main/lp',
     ]), trigger=log_interval)
     trainer.extend(extensions.ProgressBar(update_interval=10))
     if args.opt == 'momentumsgd':
@@ -150,8 +154,8 @@ def main(args):
     #results['outputdir'] = outputdir
     result = utils.io.deprocess(cuda.to_cpu(inverter.img.W.data)[0], mean)
     result.save('result.png')
-    print(inverter.img.W.data)
-    print(inverter.Wh_data)
+    #print(inverter.img.W.data)
+    #print(inverter.Wh_data)
     #print (model.fc8.W.data)
     return result
 
@@ -165,7 +169,7 @@ parser.add_argument('--arch', '-a', choices=models.archs.keys(), default='nin',
                     help='Convnet architecture')
 parser.add_argument('--batchsize', '-B', type=int, default=32,
                     help='Learning minibatch size')
-parser.add_argument('--baselr', default=0.001, type=float,
+parser.add_argument('--baselr', default=1.0, type=float,
                     help='Base learning rate')
 parser.add_argument('--gamma', default=0.999, type=float,
                     help='Base learning rate')
@@ -173,6 +177,10 @@ parser.add_argument('--momentum', default=0.9, type=float,
                     help='momentum')
 parser.add_argument('--iteration', '-i', type=int, default=1000,
                     help='Number of epochs to train')
+parser.add_argument('--lambda_tv', default=10, type=float,
+                    help='lambda_tv')
+parser.add_argument('--lambda_lp', default=10, type=float,
+                    help='lambda_lp')
 parser.add_argument('--gpu', '-g', type=int, default=-1,
                     help='GPU ID (negative value indicates CPU)')
 parser.add_argument('--finetune', '-f', default=False, action='store_true',

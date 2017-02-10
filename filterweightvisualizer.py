@@ -21,7 +21,8 @@ import numpy as np
 from PIL import Image
 import six
 
-import finetuning
+import chainer
+from utils import finetuning
 import models
 
 def save_first_conv_filter(outdir, W, cols=1, pad=1, scale=1, gamma=1.0):
@@ -85,7 +86,9 @@ if __name__ == '__main__':
     # Prepare model
     model = models.archs[args.arch]()
     if args.finetune and hasattr(model, 'finetuned_model_path'):
-        finetuning.load_param(model.finetuned_model_path, model)
+        utils.finetuning.load_param(model.finetuned_model_path, model, args.ignore)
+        #model.finetune = True
+
     if args.initmodel:
         print('Load model from', args.initmodel)
         chainer.serializers.load_npz(args.initmodel, model)

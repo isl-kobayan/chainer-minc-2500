@@ -65,14 +65,17 @@ def get_data_layer(variable):
     return first_layer.creator.inputs[0]
 
 def get_features(variable, operation=None):
-    if operation is None:
-        return variable.data
+    ax = (2,3) if len(variable.data.shape) == 4 else 1
+    if operation == 'max':
+        return variable.data.max(axis=ax)
+    elif operation == 'mean':
+        return variable.data.mean(axis=ax)
+    elif operation == 'acts':
+        xp = cuda.get_array_module(variable.data)
+        a = variable.data > 0.1 if xp is np else (variable.data > 0.1).get()
+        return np.packbits(a if len(a) == 2 else a.reshape(a.shape[0], -1), axis=1)
     else:
-        ax = (2,3) if len(variable.data.shape) == 4 else 1
-        if operation == 'max':
-            return variable.data.max(axis=ax)
-        elif operation == 'mean':
-            return variable.data.mean(axis=ax)
+        return variable.data
 
 def get_related_bounds(variable, x, y):
     """ 特徴マップのある位置の計算と関連がある入力層の範囲を計算する

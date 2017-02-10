@@ -71,14 +71,20 @@ VGG_BEST_MODEL=./result/vgg16/20160923-1544_bs21/model
 #python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l fc7 --operation None
 #python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l fc8 --operation None
 
-python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv1_1
-python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv2_1
-python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv3_1
-python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv3_2
-python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv4_1
-python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv4_2
-python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv5_1
-python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv5_2
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv1_1
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv2_1
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv3_1
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv3_2
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv4_1
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv4_2
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv5_1
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} -l conv5_2
+
+python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} --savefeatures -l pool5 --operation acts
+python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} --savefeatures -l fc6 --operation acts
+python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} --savefeatures -l fc7 --operation acts
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} --savefeatures -l fc6 --operation None
+#python ${SRC} -a vgg16 --initmodel ${VGG_BEST_MODEL} -b 20 -g 0 -R ${DATA_ROOT} ${TEACH_DATA} --savefeatures -l fc7 --operation None
 
 #python ${SRC} -a googlenet --initmodel model_googlenet -b 50 -l conv1 -v ./ilsvrc_val.txt -r /home/isl-ws16/Caffe/data/ilsvrc12/resize/val -o .
 #python ${SRC} -a googlenet --initmodel model_googlenet -b 50 -l conv2_reduce -v ./ilsvrc_val.txt -r /home/isl-ws16/Caffe/data/ilsvrc12/resize/val -o .
