@@ -75,13 +75,16 @@ def main(args):
     x_data = np.random.randn(3, insize, insize).astype(np.float32)[np.newaxis]
     #x_data = x_data * 10
     x0_sigma = 27098.11571533
-    x_data = x_data / np.linalg.norm(x_data) * x0_sigma
+    #x_data = x_data / np.linalg.norm(x_data) * x0_sigma
+    x_data = x_data * 20
     print(x_data.max(), x_data.min())
     if args.infile:
         x_data = utils.io.read_image(args.infile, insize, mean)[np.newaxis]
 
     #print(x_data)
-    inverter = utils.Inverter(model, args.label, x_data)
+    inverter = utils.Inverter(model, args.label, x_data,
+        beta=args.beta, p=args.norm_p,
+        lambda_a=args.lambda_a, lambda_tv=args.lambda_tv, lambda_lp=args.lambda_lp)
     # Set up an optimizer
     #optimizer = optimizers[args.opt]()
     #optimizer = utils.LBFGS()
@@ -157,6 +160,7 @@ def main(args):
     #print(inverter.img.W.data)
     #print(inverter.Wh_data)
     #print (model.fc8.W.data)
+    print(inverter.img.W.data.max(), inverter.img.W.data.min())
     return result
 
 parser = argparse.ArgumentParser(
@@ -169,7 +173,7 @@ parser.add_argument('--arch', '-a', choices=models.archs.keys(), default='nin',
                     help='Convnet architecture')
 parser.add_argument('--batchsize', '-B', type=int, default=32,
                     help='Learning minibatch size')
-parser.add_argument('--baselr', default=1.0, type=float,
+parser.add_argument('--baselr', default=1, type=float,
                     help='Base learning rate')
 parser.add_argument('--gamma', default=0.999, type=float,
                     help='Base learning rate')
@@ -177,6 +181,12 @@ parser.add_argument('--momentum', default=0.9, type=float,
                     help='momentum')
 parser.add_argument('--iteration', '-i', type=int, default=1000,
                     help='Number of epochs to train')
+parser.add_argument('--beta', default=2, type=float,
+                    help='beta value of tv_norm')
+parser.add_argument('--norm_p', default=6, type=float,
+                    help='pth norm of Lp norm L^p')
+parser.add_argument('--lambda_a', default=1, type=float,
+                    help='lambda_a')
 parser.add_argument('--lambda_tv', default=10, type=float,
                     help='lambda_tv')
 parser.add_argument('--lambda_lp', default=10, type=float,

@@ -10,7 +10,7 @@ parser.add_argument('--filters', '-f', type=int, default=-1,
                     help='Number of filters')
 parser.add_argument('--top', '-t', type=int, default=10,
                     help='gather top n images')
-parser.add_argument('--cols', type=int, default=5,
+parser.add_argument('--cols', '-c', type=int, default=5,
                     help='columns')
 parser.add_argument('--scale', '-s', type=int, default=1,
                     help='filter scale')
@@ -24,6 +24,8 @@ parser.add_argument('--bordercolor', '-b', nargs=3, default=[255, 255, 255],
                     help='Output directory')
 parser.add_argument('--outdirprefix', '-pf', default='concat_',
                     help='Output directory')
+parser.add_argument('--withoutframe', action='store_true',
+                    help='if specified')
 parser.add_argument('--out', '-o', default=None,
                     help='Output directory')
 parser.add_argument('--root', '-R', default='.',
@@ -36,11 +38,12 @@ if __name__ == '__main__':
     max_size = 0
     pad = args.pad
     top = args.top
-    cols = args.cols
+    cols = min(args.cols, top)
     rows = (top + cols - 1) // cols
     scale = args.scale
     bgcolor = tuple(args.mean)
     bcolor = tuple(args.bordercolor)
+    offset = -pad if args.withoutframe else 0
 
     outdir = args.out or os.path.join(
         os.path.dirname(args.root),
@@ -65,20 +68,20 @@ if __name__ == '__main__':
             max_size = max(im.size[0], im.size[1], max_size)
 
         step = max_size + pad
-        W = step * cols + pad
-        H = step * rows + pad
+        W = step * cols + pad + 2 * offset
+        H = step * rows + pad + 2 * offset
         tiled_image = Image.new("RGB", (W, H))
         draw = ImageDraw.Draw(tiled_image)
         draw.rectangle(((0,0),(W,H)), bgcolor)
         # if pad > 0, draw border
         if pad > 0:
             for r in range(rows + 1):
-                draw.rectangle(((0, r * step),(W, r * step + pad - 1)), fill=bcolor)
+                draw.rectangle(((0, r * step + offset), (W, r * step + offset + pad - 1)), fill=bcolor)
             for c in range(cols + 1):
-                draw.rectangle(((c * step, 0),(c * step + pad -1, H)), fill=bcolor)
+                draw.rectangle(((c * step + offset, 0),(c * step + offset + pad -1, H)), fill=bcolor)
         for k, im in enumerate(images):
             r, c = k // cols, int(k % cols)
-            x, y = c * step + pad, r * step + pad
+            x, y = c * step + pad + offset, r * step + pad + offset
             tiled_image.paste(im, (x, y))
 
         print(f, max_size)

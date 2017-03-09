@@ -101,7 +101,7 @@ def main(args):
     trainer.extend(extensions.dump_graph('main/loss'))
     trainer.extend(extensions.snapshot(), trigger=snapshot_interval)
     trainer.extend(extensions.snapshot_object(
-        model, 'model_iter_{.updater.iteration}'), trigger=snapshot_interval)
+        model, 'model_iter_{.updater.iteration}'), trigger=(500, 'iteration'))
     # Be careful to pass the interval directly to LogReport
     # (it determines when to emit log rather than when to read observations)
     trainer.extend(extensions.LogReport(trigger=log_interval))
@@ -118,6 +118,7 @@ def main(args):
         chainer.serializers.load_npz(args.resume, trainer)
 
     if not args.test:
+        chainer.serializers.save_npz(outputdir + '/model0', model)
         trainer.run()
         chainer.serializers.save_npz(outputdir + '/model', model)
         with open(outputdir + '/args.txt', 'w') as o:

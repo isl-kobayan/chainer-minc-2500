@@ -11,16 +11,16 @@ parser.add_argument('--trial', '-t', type=int, default=20,
                     help='trial count')
 parser.set_defaults(finetune=True)
 parser.set_defaults(gpu=0)
-
 args = parser.parse_args()
 
+args.out='result2'
 #archs = ['googlenet', 'vgg16']
 batchsize_range = 20, 32
 baselr_range = 0.0001, 0.005
 gamma_range = 0.3, 0.9
 momentum_range = 0.9, 1.0
 
-archs = ['googlenetbn']
+archs = ['vgg16']
 #batchsizes = [32]
 #baselrs = [0.001]
 #gammas = [0.5]

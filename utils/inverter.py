@@ -7,7 +7,7 @@ class Inverter(chainer.Chain):
 
     """ Inverter """
 
-    def __init__(self, model, label, initialImg=None, layers=[], beta=2, p=10, kambda_a=1, lambda_tv=10, lambda_lp=10):
+    def __init__(self, model, label, initialImg=None, layers=[], beta=2, p=6, lambda_a=1, lambda_tv=10, lambda_lp=10):
         eval_model = model.copy()
         eval_model.train = False
         self.labelsize = model.labelsize
@@ -28,8 +28,8 @@ class Inverter(chainer.Chain):
         self.lambda_tv = lambda_tv
         self.lambda_lp = lambda_lp
         self.train = True
-        self.add_persistent('Wh_data', np.array([[[[1],[-1]]]], dtype='f'))
-        self.add_persistent('Ww_data', np.array([[[[1, -1]]]], dtype='f'))
+        self.add_persistent('Wh_data', np.array([[[[1],[-1],[0]]]], dtype='f'))
+        self.add_persistent('Ww_data', np.array([[[[1, -1, 0]]]], dtype='f'))
         truth_probabiliry = np.zeros(self.labelsize)[np.newaxis].astype(np.float32)
         truth_probabiliry[0, label] = 1
         self.add_persistent('truth_probabiliry', truth_probabiliry)
@@ -66,9 +66,10 @@ class Inverter(chainer.Chain):
         return after_softmax
 
     def tv_norm(self, x, Wh, Ww):
-        diffh = F.convolution_2d(F.reshape(x, (3, 1, self.insize, self.insize)), W=Wh)
-        diffw = F.convolution_2d(F.reshape(x, (3, 1, self.insize, self.insize)), W=Ww)
-        tv = (F.sum(diffh**2) + F.sum(diffw**2))**(self.beta / 2.)
+        diffh = F.convolution_2d(F.reshape(x, (3, 1, self.insize, self.insize)), W=Wh, pad=(1, 0))
+        diffw = F.convolution_2d(F.reshape(x, (3, 1, self.insize, self.insize)), W=Ww, pad=(0, 1))
+        #tv = (F.sum(diffh**2) + F.sum(diffw**2))**(self.beta / 2.)
+        tv = F.sum((diffh**2 + diffw**2)**(self.beta / 2.))
         return tv
 
     def __call__(self, x):
@@ -80,17 +81,20 @@ class Inverter(chainer.Chain):
         model_loss = self.model(self.img(), t)
         #p = self.getprobability(model_loss)
         a = self.getbeforesoftmax(model_loss)
+        #print(a.data, F.get_item(a, (0, self.label)).data)
         #print(F.sum(p**2).data)
         #p = (1 / F.sum(p**2)) .* (p**2)
         #ce = self.getCrossEntropy(model_loss)
         #print(t.data, ce.data, p.data, tp.data)
         #class_mse = ce#F.mean_squared_error(p, tp)
         #class_mse = F.sum(-F.log(p**2 / F.sum(p**2).data) * tp)
-        activation = -F.sum(a * tp)
+        #activation = -F.sum(a * tp)
+        activation = -F.get_item(a, (0, self.label))
+        #activation = -F.get_item(a, (0, self.label)) / F.sqrt(F.sum(a**2) - F.get_item(a, (0, self.label))**2)
+        #activation = -F.get_item(a, (0, self.label)) + (F.sum(a**2) - F.get_item(a, (0, self.label))**2) / (a.data.shape[1] - 1)
         #class_mse = F.sum(-F.log(p) * tp)
-        lp = (F.sum(self.img()**self.p) ** (1.0/self.p)) / np.prod(self.img().data.shape[1:])
-
         tv = self.tv_norm(self.img(), Wh, Ww) / np.prod(self.img().data.shape[1:])
+        lp = (F.sum(self.img()**self.p) ** (1./self.p)) / np.prod(self.img().data.shape[1:])
         loss = self.lambda_a * activation + self.lambda_tv * tv + self.lambda_lp * lp
         chainer.report({'inv_loss': loss, 'activation': activation, 'tv': tv, 'lp': lp}, self)
         #print('inverter', x.data, class_mse.data, tv.data)
