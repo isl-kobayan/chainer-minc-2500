@@ -103,8 +103,6 @@ def main(args):
 parser = argparse.ArgumentParser(
     description='Learning convnet from MINC-2500 dataset')
 parser.add_argument('val', help='Path to validation image-label list file')
-parser.add_argument('--categories', '-c', default='categories.txt',
-                    help='Path to category list file')
 parser.add_argument('--arch', '-a', choices=models.archs.keys(), default='nin',
                     help='Convnet architecture')
 parser.add_argument('--layer', '-l', default='conv1',

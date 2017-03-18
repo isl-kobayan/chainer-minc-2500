@@ -20,6 +20,7 @@ import preprocessed_dataset as ppds
 import datetime
 import time
 import os
+import config
 
 image_size = 362
 
@@ -141,7 +142,7 @@ parser = argparse.ArgumentParser(
     description='Learning convnet from MINC-2500 dataset')
 parser.add_argument('train', help='Path to training image-label list file')
 parser.add_argument('val', help='Path to validation image-label list file')
-parser.add_argument('--categories', '-c', default='categories.txt',
+parser.add_argument('--categories', '-c', default=config.categories_path,
                     help='Path to category list file')
 parser.add_argument('--arch', '-a', choices=models.archs.keys(), default='nin',
                     help='Convnet architecture')
