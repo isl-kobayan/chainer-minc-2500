@@ -86,11 +86,17 @@ example: visualize "conv1" layer of imagenet-pretrained AlexNet (bvlc_alexnet.ca
 3. acquire deconv image  
  このプログラムは、手順1の結果をもとに、Zeiler & Fergusの手法を用いて可視化画像を取得します。  
  （このプログラムを実行する前に、手順2を実行する必要はありません）  
- ```
+ ```
  python acquire_patches.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
  -m ilsvrc_2012_mean.npy -l conv1
  ```  
  Please execute procedure 1 before executing this procedure (You don't have to execute procedure 2).  
- This program generates images (./result/alex/extract/deconv_conv1/*.png).  
+ This program generates images (./result/alex/extract/deconv_conv1/*.png).    
 
-You can concatenate images
+You can concatenate images using concat_image.py  
+先の例のようにフィルタ毎に上位9枚の画像を出力した時、画像はバラバラで出力されますが、
+下のようにすると、9枚の画像が3x3の正方形状に連結されます。
+ ```
+ python concat_image.py -R ./result/alex/extract/conv1 -c 3
+ ```  
+
