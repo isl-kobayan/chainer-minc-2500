@@ -67,33 +67,30 @@ example: visualize "conv1" layer of imagenet-pretrained AlexNet (bvlc_alexnet.ca
 
 1. extract filter output  
  このプログラムは、指定した層の各フィルタ（全結合層の場合は各ニューロン）を刺激する上位9枚(-t 9)の画像を調べます。  
-  
-  ```
-  python extract_features.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
-  -m ilsvrc_2012_mean.npy -l conv1 -t 9
-  ```  
-  This program generates "./result/alex/extract/features/top_conv1.txt".
+ ```
+ python extract_features.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
+ -m ilsvrc_2012_mean.npy -l conv1 -t 9
+ ```  
+ This program generates "./result/alex/extract/features/top_conv1.txt".
 
 2. acquire most activated image patch  
- このプログラムは、手順1の結果をもとに、活性化パッチ画像を取得します。  
-  
-  ```
-  python acquire_patches.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
-  -m ilsvrc_2012_mean.npy -l conv1
-  ```  
-  Please execute procedure 1 before executing this procedure.  
-  This program generates images (./result/alex/extract/conv1/*.png).  
-  This program also generates "./result/alex/extract/features/maxbounds_conv1.txt" and "./result/alex/extract/features/maxloc_conv1.txt".
+ このプログラムは、手順1の結果をもとに、活性化パッチ画像を取得します。    
+ ```
+ python acquire_patches.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
+ -m ilsvrc_2012_mean.npy -l conv1
+ ```  
+ Please execute procedure 1 before executing this procedure.  
+ This program generates images (./result/alex/extract/conv1/*.png).  
+ This program also generates "./result/alex/extract/features/maxbounds_conv1.txt" and "./result/alex/extract/features/maxloc_conv1.txt".
 
 3. acquire deconv image  
  このプログラムは、手順1の結果をもとに、Zeiler & Fergusの手法を用いて可視化画像を取得します。  
  （このプログラムを実行する前に、手順2を実行する必要はありません）  
-  
-  ```
-  python acquire_patches.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
-  -m ilsvrc_2012_mean.npy -l conv1
-  ```  
-  Please execute procedure 1 before executing this procedure (You don't have to execute procedure 2).  
-  This program generates images (./result/alex/extract/deconv_conv1/*.png).  
+ ```
+ python acquire_patches.py ./minc-2500/all_list.txt -a alex --finetune -b 50 -g 0 -R ./minc-2500 \
+ -m ilsvrc_2012_mean.npy -l conv1
+ ```  
+ Please execute procedure 1 before executing this procedure (You don't have to execute procedure 2).  
+ This program generates images (./result/alex/extract/deconv_conv1/*.png).  
 
 You can concatenate images
